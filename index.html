@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Cluster — Architecture Pédagogique</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --k8s:    #326CE5;
+  --k8s-dim:#326CE522;
+  --k8s-glow:rgba(50,108,229,0.4);
+  --cyan:   #00e5ff;
+  --cyan-dim:rgba(0,229,255,0.15);
+  --green:  #00ffb3;
+  --green-dim:rgba(0,255,179,0.15);
+  --orange: #ff8c42;
+  --red:    #ff4466;
+  --yellow: #ffd166;
+  --purple: #b388ff;
+  --bg:     #04080f;
+  --bg2:    #070d17;
+  --panel:  #0a1525;
+  --panel2: #0d1e33;
+  --border: #132240;
+  --text:   #7a9bbf;
+  --bright: #b8d4f0;
+  --white:  #deeeff;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+
+html{scroll-behavior:smooth;}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* Scanlines */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);
+  pointer-events:none;z-index:200;
+}
+
+/* Hex grid bg */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(50,108,229,0.04) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0,229,255,0.03) 0%, transparent 50%);
+  pointer-events:none;z-index:0;
+}
+
+.wrapper{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:28px 20px 60px;}
+
+/* ───── HEADER ───── */
+header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:36px;padding-bottom:18px;
+  border-bottom:1px solid var(--border);
+  flex-wrap:wrap;gap:16px;
+}
+.logo{
+  font-family:'Orbitron',sans-serif;font-weight:900;
+  font-size:clamp(1.5rem,3.5vw,2.4rem);
+  color:var(--cyan);letter-spacing:0.12em;
+  text-shadow:0 0 24px rgba(0,229,255,0.3),0 0 60px rgba(0,229,255,0.1);
+}
+.logo em{color:var(--k8s);font-style:normal;}
+.logo small{
+  display:block;font-size:0.38em;letter-spacing:0.35em;
+  color:var(--text);margin-top:5px;font-family:'Share Tech Mono',monospace;
+  text-shadow:none;
+}
+.header-pills{display:flex;gap:12px;flex-wrap:wrap;}
+.pill{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:4px;padding:7px 14px;text-align:center;
+}
+.pill .lbl{font-size:0.55rem;letter-spacing:0.2em;color:var(--text);text-transform:uppercase;}
+.pill .val{font-size:0.82rem;color:var(--cyan);margin-top:2px;font-family:'Orbitron',sans-serif;}
+.pill .val.green{color:var(--green);}
+.pill .val.orange{color:var(--orange);}
+
+/* ───── PANELS ───── */
+.panel{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:22px;position:relative;overflow:hidden;
+}
+.panel::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--k8s),transparent);
+  opacity:0.6;
+}
+.panel-title{
+  font-family:'Orbitron',sans-serif;font-size:0.6rem;
+  letter-spacing:0.3em;color:var(--cyan);text-transform:uppercase;
+  margin-bottom:18px;display:flex;align-items:center;gap:8px;
+}
+.panel-title::before{
+  content:'';width:6px;height:6px;background:var(--cyan);border-radius:50%;
+  box-shadow:0 0 8px var(--cyan);animation:blink 2.5s infinite;
+}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+
+/* ───── TOPOLOGY SVG AREA ───── */
+.topo-wrap{grid-column:1/-1;padding:0;}
+.topo-inner{position:relative;width:100%;height:480px;}
+.topo-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+
+/* Nodes */
+.node{
+  position:absolute;transform:translate(-50%,-50%);
+  text-align:center;cursor:pointer;
+  transition:transform 0.2s;z-index:10;
+}
+.node:hover{transform:translate(-50%,-50%) scale(1.08);}
+.node:hover .tooltip{opacity:1;pointer-events:auto;transform:translateY(0);}
+
+.node-hex{
+  width:56px;height:56px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 6px;position:relative;font-size:1.2rem;
+}
+.node-hex.cp{
+  background:rgba(50,108,229,0.12);border:2px solid var(--k8s);
+  box-shadow:0 0 14px var(--k8s-glow);animation:pulse-k8s 3s infinite;
+}
+.node-hex.worker{
+  background:rgba(0,229,255,0.08);border:2px solid var(--cyan);
+  box-shadow:0 0 12px rgba(0,229,255,0.25);animation:pulse-cyan 3.5s infinite;
+}
+.node-hex.argo{
+  background:rgba(255,140,66,0.1);border:2px solid var(--orange);
+  box-shadow:0 0 12px rgba(255,140,66,0.3);animation:pulse-orange 2.8s infinite;
+  width:52px;height:52px;
+}
+.node-hex.longhorn{
+  background:rgba(0,255,179,0.08);border:2px solid var(--green);
+  box-shadow:0 0 12px rgba(0,255,179,0.25);animation:pulse-green 3.2s infinite;
+  width:52px;height:52px;
+}
+.node-hex.internet{
+  background:rgba(0,229,255,0.06);border:2px solid rgba(0,229,255,0.4);
+  width:60px;height:60px;animation:pulse-cyan 4s infinite;
+}
+.node-hex.etcd{
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(255,209,102,0.08);border:2px solid var(--yellow);
+  box-shadow:0 0 10px rgba(255,209,102,0.25);font-size:1rem;
+}
+@keyframes pulse-k8s{0%,100%{box-shadow:0 0 14px var(--k8s-glow);}50%{box-shadow:0 0 28px var(--k8s-glow),0 0 50px rgba(50,108,229,0.1);}}
+@keyframes pulse-cyan{0%,100%{box-shadow:0 0 12px rgba(0,229,255,0.25);}50%{box-shadow:0 0 24px rgba(0,229,255,0.5);}}
+@keyframes pulse-orange{0%,100%{box-shadow:0 0 12px rgba(255,140,66,0.3);}50%{box-shadow:0 0 24px rgba(255,140,66,0.6);}}
+@keyframes pulse-green{0%,100%{box-shadow:0 0 12px rgba(0,255,179,0.25);}50%{box-shadow:0 0 24px rgba(0,255,179,0.5);}}
+
+.node-lbl{font-size:0.55rem;color:var(--bright);letter-spacing:0.05em;white-space:nowrap;}
+.node-sub{font-size:0.47rem;color:var(--text);margin-top:2px;}
+.node-badge{
+  position:absolute;top:-3px;right:-3px;
+  width:10px;height:10px;border-radius:50%;border:1px solid var(--bg);
+}
+.node-badge.run{background:var(--green);box-shadow:0 0 5px var(--green);}
+.node-badge.ready{background:var(--k8s);box-shadow:0 0 5px var(--k8s);}
+
+/* Tooltip */
+.tooltip{
+  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(6px);
+  background:var(--panel2);border:1px solid var(--k8s);border-radius:6px;
+  padding:10px 14px;width:200px;text-align:left;
+  opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s;
+  z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.6);
+}
+.tooltip::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:var(--k8s);
+}
+.tooltip-title{font-family:'Orbitron',sans-serif;font-size:0.6rem;color:var(--cyan);margin-bottom:6px;letter-spacing:0.1em;}
+.tooltip-desc{font-size:0.58rem;color:var(--text);line-height:1.6;}
+.tooltip-tag{
+  display:inline-block;margin-top:5px;font-size:0.5rem;
+  background:rgba(50,108,229,0.15);color:var(--k8s);
+  border:1px solid rgba(50,108,229,0.3);padding:1px 6px;border-radius:2px;
+}
+
+/* Packet animation */
+.pkt{filter:drop-shadow(0 0 3px currentColor);}
+
+/* ───── BOTTOM GRID ───── */
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px;}
+@media(max-width:900px){.bottom-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:580px){.bottom-grid{grid-template-columns:1fr;}}
+
+/* Node rows */
+.node-row{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  background:rgba(0,0,0,0.25);border-radius:4px;border:1px solid var(--border);
+  border-left:3px solid transparent;margin-bottom:7px;
+  transition:border-color 0.2s,background 0.2s;
+}
+.node-row:last-child{margin-bottom:0;}
+.node-row:hover{background:rgba(50,108,229,0.06);border-left-color:var(--k8s);}
+.node-row .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot.run{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
+.dot.ready{background:var(--k8s);box-shadow:0 0 6px var(--k8s);}
+.nr-name{font-size:0.72rem;color:var(--bright);flex:1;}
+.nr-role{
+  font-size:0.52rem;letter-spacing:0.1em;padding:1px 6px;border-radius:2px;
+}
+.nr-role.cp{background:rgba(50,108,229,0.15);color:var(--k8s);border:1px solid rgba(50,108,229,0.3);}
+.nr-role.wk{background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.25);}
+.nr-cpu{font-size:0.6rem;color:var(--text);width:32px;text-align:right;}
+.bar-wrap{height:3px;background:var(--border);border-radius:2px;margin-top:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;animation:grow 1.5s ease-out forwards;transform-origin:left;}
+.bar-fill.blue{background:linear-gradient(90deg,#1a50a0,var(--k8s));box-shadow:0 0 4px var(--k8s);}
+.bar-fill.cyan{background:linear-gradient(90deg,#007a99,var(--cyan));box-shadow:0 0 4px var(--cyan);}
+.bar-fill.green{background:linear-gradient(90deg,#00a070,var(--green));box-shadow:0 0 4px var(--green);}
+.bar-fill.orange{background:linear-gradient(90deg,#aa4400,var(--orange));box-shadow:0 0 4px var(--orange);}
+@keyframes grow{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+
+/* Longhorn volumes */
+.vol-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.vol-item{
+  background:rgba(0,0,0,0.25);border:1px solid var(--border);
+  border-radius:4px;padding:8px 10px;
+}
+.vol-name{font-size:0.62rem;color:var(--bright);margin-bottom:4px;}
+.vol-size{font-size:0.55rem;color:var(--text);}
+.vol-rep{font-size:0.52rem;color:var(--green);margin-top:3px;}
+.vol-bar{height:3px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden;}
+.vol-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#00a070,var(--green));}
+
+/* ArgoCD apps */
+.argo-app{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  background:rgba(0,0,0,0.25);border:1px solid var(--border);
+  border-radius:4px;margin-bottom:7px;
+}
+.argo-app:last-child{margin-bottom:0;}
+.argo-sync{font-size:0.6rem;padding:1px 7px;border-radius:2px;flex-shrink:0;}
+.argo-sync.synced{background:rgba(0,255,179,0.1);color:var(--green);border:1px solid rgba(0,255,179,0.3);}
+.argo-sync.oos{background:rgba(255,140,66,0.1);color:var(--orange);border:1px solid rgba(255,140,66,0.3);}
+.argo-name{font-size:0.72rem;color:var(--bright);flex:1;}
+.argo-env{font-size:0.55rem;color:var(--text);}
+
+/* Concepts */
+.concept{
+  display:flex;gap:10px;padding:8px 0;
+  border-bottom:1px solid rgba(19,34,64,0.6);
+}
+.concept:last-child{border-bottom:none;}
+.concept-icon{font-size:1.1rem;flex-shrink:0;width:28px;text-align:center;}
+.concept-title{font-size:0.68rem;color:var(--bright);margin-bottom:3px;}
+.concept-desc{font-size:0.58rem;color:var(--text);line-height:1.55;}
+
+/* Legend */
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:0.58rem;color:var(--text);}
+.leg-dot{width:8px;height:8px;border-radius:50%;}
+
+/* Fade in */
+.panel{animation:fadein 0.5s ease forwards;opacity:0;}
+.panel:nth-child(1){animation-delay:0.05s;}
+.panel:nth-child(2){animation-delay:0.12s;}
+.panel:nth-child(3){animation-delay:0.19s;}
+.panel:nth-child(4){animation-delay:0.26s;}
+.panel:nth-child(5){animation-delay:0.33s;}
+.panel:nth-child(6){animation-delay:0.4s;}
+@keyframes fadein{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+footer{text-align:center;font-size:0.55rem;color:#132240;margin-top:44px;letter-spacing:0.2em;}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <em>K8S</em> CLUSTER
+    <small>ARCHITECTURE KUBERNETES // PÉDAGOGIQUE // 3 CP + 4 WORKERS</small>
+  </div>
+  <div class="header-pills">
+    <div class="pill"><div class="lbl">Version</div><div class="val">v1.31.0</div></div>
+    <div class="pill"><div class="lbl">Nodes</div><div class="val green">7 / 7</div></div>
+    <div class="pill"><div class="lbl">Pods</div><div class="val green">42 Running</div></div>
+    <div class="pill"><div class="lbl">Longhorn</div><div class="val green">Healthy</div></div>
+    <div class="pill"><div class="lbl">ArgoCD</div><div class="val orange">3 Apps</div></div>
+  </div>
+</header>
+
+<!-- TOPOLOGY PANEL -->
+<div class="panel topo-wrap" style="margin-bottom:16px;">
+  <div class="panel-title">TOPOLOGIE DU CLUSTER — FLUX DE COMMUNICATION</div>
+  <div class="topo-inner" id="topo">
+
+    <svg class="topo-svg" id="topo-svg" viewBox="0 0 1160 480" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="glow-blue"><feGaussianBlur stdDeviation="2.5" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+        <filter id="glow-cyan"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+        <filter id="glow-grn"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+      </defs>
+
+      <!-- ── etcd cluster ring (behind control planes) -->
+      <ellipse cx="580" cy="170" rx="300" ry="115" fill="none" stroke="rgba(255,209,102,0.07)" stroke-width="1.5" stroke-dasharray="8 5"/>
+
+      <!-- ── etcd ↔ etcd sync lines -->
+      <line x1="300" y1="135" x2="460" y2="135" stroke="rgba(255,209,102,0.2)" stroke-width="1" stroke-dasharray="3 5"/>
+      <line x1="460" y1="135" x2="620" y2="135" stroke="rgba(255,209,102,0.2)" stroke-width="1" stroke-dasharray="3 5"/>
+      <line x1="300" y1="135" x2="620" y2="135" stroke="rgba(255,209,102,0.12)" stroke-width="1" stroke-dasharray="3 5"/>
+
+      <!-- ── kubectl → API Server cp1 -->
+      <line x1="80" y1="80" x2="380" y2="200" stroke="rgba(0,229,255,0.15)" stroke-width="1.5" stroke-dasharray="5 5"/>
+
+      <!-- ── CP → CP (HA) -->
+      <line x1="380" y1="200" x2="580" y2="200" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line x1="580" y1="200" x2="780" y2="200" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line x1="380" y1="200" x2="780" y2="200" stroke="rgba(50,108,229,0.12)" stroke-width="1" stroke-dasharray="4 6"/>
+
+      <!-- ── CP → Workers -->
+      <!-- cp1 → w1 w2 -->
+      <line x1="380" y1="230" x2="200" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="380" y1="230" x2="420" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+      <!-- cp2 center -->
+      <line x1="580" y1="230" x2="620" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+      <!-- cp3 → w4 -->
+      <line x1="780" y1="230" x2="840" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <!-- ── Longhorn replication lines (workers) -->
+      <line x1="200" y1="380" x2="420" y2="380" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
+      <line x1="420" y1="380" x2="620" y2="380" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
+      <line x1="620" y1="380" x2="840" y2="380" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
+      <!-- Longhorn controller (on worker-2) to volumes -->
+      <line x1="420" y1="340" x2="420" y2="430" stroke="rgba(0,255,179,0.15)" stroke-width="1" stroke-dasharray="3 4"/>
+
+      <!-- ── ArgoCD → Git (external) → cluster -->
+      <line x1="1060" y1="80" x2="780" y2="200" stroke="rgba(255,140,66,0.2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <line x1="1060" y1="80" x2="1080" y2="360" stroke="rgba(255,140,66,0.15)" stroke-width="1" stroke-dasharray="5 4"/>
+
+      <!-- ─── ANIMATED PACKETS ─── -->
+
+      <!-- kubectl → cp1 -->
+      <circle r="3.5" fill="#00e5ff" filter="url(#glow-cyan)">
+        <animateMotion dur="2.4s" repeatCount="indefinite">
+          <mpath href="#p-kubectl-cp1"/>
+        </animateMotion>
+      </circle>
+      <path id="p-kubectl-cp1" d="M80,80 L380,200" fill="none"/>
+
+      <!-- cp1 → cp2 -->
+      <circle r="3" fill="#326CE5" filter="url(#glow-blue)">
+        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.3s">
+          <mpath href="#p-cp1-cp2"/>
+        </animateMotion>
+      </circle>
+      <path id="p-cp1-cp2" d="M380,200 L580,200" fill="none"/>
+
+      <!-- cp2 → cp3 -->
+      <circle r="3" fill="#326CE5" filter="url(#glow-blue)">
+        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.9s">
+          <mpath href="#p-cp2-cp3"/>
+        </animateMotion>
+      </circle>
+      <path id="p-cp2-cp3" d="M580,200 L780,200" fill="none"/>
+
+      <!-- etcd sync -->
+      <circle r="2.5" fill="#ffd166" opacity="0.8">
+        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.2s">
+          <mpath href="#p-etcd12"/>
+        </animateMotion>
+      </circle>
+      <path id="p-etcd12" d="M300,135 L460,135" fill="none"/>
+      <circle r="2.5" fill="#ffd166" opacity="0.8">
+        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.9s">
+          <mpath href="#p-etcd23"/>
+        </animateMotion>
+      </circle>
+      <path id="p-etcd23" d="M460,135 L620,135" fill="none"/>
+
+      <!-- cp → workers -->
+      <circle r="2.5" fill="#00e5ff" opacity="0.7">
+        <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s">
+          <mpath href="#p-cp1-w1"/>
+        </animateMotion>
+      </circle>
+      <path id="p-cp1-w1" d="M380,230 L200,360" fill="none"/>
+      <circle r="2.5" fill="#00e5ff" opacity="0.7">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1s">
+          <mpath href="#p-cp1-w2"/>
+        </animateMotion>
+      </circle>
+      <path id="p-cp1-w2" d="M380,230 L420,360" fill="none"/>
+      <circle r="2.5" fill="#00e5ff" opacity="0.7">
+        <animateMotion dur="1.9s" repeatCount="indefinite" begin="0.7s">
+          <mpath href="#p-cp2-w3"/>
+        </animateMotion>
+      </circle>
+      <path id="p-cp2-w3" d="M580,230 L620,360" fill="none"/>
+      <circle r="2.5" fill="#00e5ff" opacity="0.7">
+        <animateMotion dur="2.1s" repeatCount="indefinite" begin="1.3s">
+          <mpath href="#p-cp3-w4"/>
+        </animateMotion>
+      </circle>
+      <path id="p-cp3-w4" d="M780,230 L840,360" fill="none"/>
+
+      <!-- Longhorn replication -->
+      <circle r="2.5" fill="#00ffb3" opacity="0.6">
+        <animateMotion dur="2.8s" repeatCount="indefinite" begin="0.4s">
+          <mpath href="#p-lh12"/>
+        </animateMotion>
+      </circle>
+      <path id="p-lh12" d="M200,380 L420,380" fill="none"/>
+      <circle r="2.5" fill="#00ffb3" opacity="0.6">
+        <animateMotion dur="2.8s" repeatCount="indefinite" begin="1.4s">
+          <mpath href="#p-lh23"/>
+        </animateMotion>
+      </circle>
+      <path id="p-lh23" d="M420,380 L620,380" fill="none"/>
+      <circle r="2.5" fill="#00ffb3" opacity="0.6">
+        <animateMotion dur="2.8s" repeatCount="indefinite" begin="2.1s">
+          <mpath href="#p-lh34"/>
+        </animateMotion>
+      </circle>
+      <path id="p-lh34" d="M620,380 L840,380" fill="none"/>
+
+      <!-- ArgoCD → cluster -->
+      <circle r="3" fill="#ff8c42" opacity="0.9" filter="url(#glow-blue)">
+        <animateMotion dur="2.6s" repeatCount="indefinite" begin="0.6s">
+          <mpath href="#p-argo-cp3"/>
+        </animateMotion>
+      </circle>
+      <path id="p-argo-cp3" d="M1060,80 L780,200" fill="none"/>
+
+      <!-- Zone labels -->
+      <text x="580" y="58" text-anchor="middle" fill="rgba(255,209,102,0.35)" font-family="'Share Tech Mono',monospace" font-size="11" letter-spacing="3">── etcd RAFT CONSENSUS ZONE ──</text>
+      <text x="520" y="310" text-anchor="middle" fill="rgba(50,108,229,0.3)" font-family="'Share Tech Mono',monospace" font-size="10" letter-spacing="2">── CONTROL PLANE (HA) ──</text>
+      <text x="520" y="470" text-anchor="middle" fill="rgba(0,229,255,0.2)" font-family="'Share Tech Mono',monospace" font-size="10" letter-spacing="2">── DATA PLANE // WORKER NODES ──</text>
+    </svg>
+
+    <!-- NODES -->
+
+    <!-- kubectl client -->
+    <div class="node" style="left:6.9%;top:80px">
+      <div class="node-hex internet" style="width:50px;height:50px;font-size:1rem">💻</div>
+      <div class="node-lbl">kubectl</div>
+      <div class="node-sub">Client CLI</div>
+      <div class="tooltip">
+        <div class="tooltip-title">kubectl</div>
+        <div class="tooltip-desc">Interface CLI officielle de Kubernetes. Envoie des commandes à l'API Server via HTTPS.</div>
+        <span class="tooltip-tag">client</span>
+      </div>
+    </div>
+
+    <!-- etcd nodes -->
+    <div class="node" style="left:25.9%;top:135px">
+      <div class="node-hex etcd">🗄</div>
+      <div class="node-lbl">etcd-1</div>
+      <div class="node-sub">leader</div>
+      <div class="tooltip">
+        <div class="tooltip-title">etcd</div>
+        <div class="tooltip-desc">Base de données clé-valeur distribuée. Stocke TOUT l'état du cluster. Protocole Raft pour le consensus entre les 3 instances.</div>
+        <span class="tooltip-tag">stateful</span><span class="tooltip-tag" style="margin-left:4px">raft</span>
+      </div>
+    </div>
+    <div class="node" style="left:39.7%;top:135px">
+      <div class="node-hex etcd">🗄</div>
+      <div class="node-lbl">etcd-2</div>
+      <div class="node-sub">follower</div>
+      <div class="tooltip">
+        <div class="tooltip-title">etcd</div>
+        <div class="tooltip-desc">Réplique de l'état. Peut devenir leader si le leader tombe. Quorum = 2 sur 3 instances minimum.</div>
+        <span class="tooltip-tag">follower</span>
+      </div>
+    </div>
+    <div class="node" style="left:53.4%;top:135px">
+      <div class="node-hex etcd">🗄</div>
+      <div class="node-lbl">etcd-3</div>
+      <div class="node-sub">follower</div>
+      <div class="tooltip">
+        <div class="tooltip-title">etcd — Quorum</div>
+        <div class="tooltip-desc">Avec 3 nœuds, le cluster tolère 1 panne. Avec 5 nœuds, il tolèrerait 2 pannes. Toujours un nombre impair !</div>
+        <span class="tooltip-tag">fault-tolerant</span>
+      </div>
+    </div>
+
+    <!-- Control Planes -->
+    <div class="node" style="left:32.8%;top:200px">
+      <div class="node-hex cp">⚙️</div>
+      <div class="node-badge ready"></div>
+      <div class="node-lbl">control-plane-1</div>
+      <div class="node-sub">API Server · Scheduler</div>
+      <div class="tooltip">
+        <div class="tooltip-title">Control Plane</div>
+        <div class="tooltip-desc">Fait tourner : kube-apiserver, kube-scheduler, kube-controller-manager. Le cerveau du cluster.</div>
+        <span class="tooltip-tag">master</span>
+      </div>
+    </div>
+    <div class="node" style="left:50%;top:200px">
+      <div class="node-hex cp">⚙️</div>
+      <div class="node-badge ready"></div>
+      <div class="node-lbl">control-plane-2</div>
+      <div class="node-sub">API Server · CtrlMgr</div>
+      <div class="tooltip">
+        <div class="tooltip-title">Haute Disponibilité</div>
+        <div class="tooltip-desc">3 control planes derrière un load balancer. Si l'un tombe, les autres continuent. Aucune interruption de service.</div>
+        <span class="tooltip-tag">HA</span>
+      </div>
+    </div>
+    <div class="node" style="left:67.2%;top:200px">
+      <div class="node-hex cp">⚙️</div>
+      <div class="node-badge ready"></div>
+      <div class="node-lbl">control-plane-3</div>
+      <div class="node-sub">API Server · Scheduler</div>
+      <div class="tooltip">
+        <div class="tooltip-title">kube-scheduler</div>
+        <div class="tooltip-desc">Décide sur quel worker placer chaque pod en fonction des ressources disponibles, affinités et contraintes.</div>
+        <span class="tooltip-tag">scheduling</span>
+      </div>
+    </div>
+
+    <!-- Workers -->
+    <div class="node" style="left:17.2%;top:380px">
+      <div class="node-hex worker">🖥</div>
+      <div class="node-badge run"></div>
+      <div class="node-lbl">worker-1</div>
+      <div class="node-sub">kubelet · kube-proxy</div>
+      <div class="tooltip">
+        <div class="tooltip-title">Worker Node</div>
+        <div class="tooltip-desc">Fait tourner les pods applicatifs. kubelet gère les containers, kube-proxy gère le réseau (iptables/eBPF).</div>
+        <span class="tooltip-tag">data plane</span>
+      </div>
+    </div>
+    <div class="node" style="left:36.2%;top:380px">
+      <div class="node-hex worker">🖥</div>
+      <div class="node-badge run"></div>
+      <div class="node-lbl">worker-2</div>
+      <div class="node-sub">kubelet · Longhorn Mgr</div>
+      <div class="tooltip">
+        <div class="tooltip-title">Longhorn Manager</div>
+        <div class="tooltip-desc">Worker qui héberge le Longhorn Manager pod. Orchestre la création et la réplication des volumes persistants.</div>
+        <span class="tooltip-tag">storage</span>
+      </div>
+    </div>
+    <div class="node" style="left:53.4%;top:380px">
+      <div class="node-hex worker">🖥</div>
+      <div class="node-badge run"></div>
+      <div class="node-lbl">worker-3</div>
+      <div class="node-sub">kubelet · kube-proxy</div>
+      <div class="tooltip">
+        <div class="tooltip-title">Kubelet</div>
+        <div class="tooltip-desc">Agent qui tourne sur chaque node. Reçoit les PodSpecs depuis l'API Server et s'assure que les containers tournent correctement.</div>
+        <span class="tooltip-tag">agent</span>
+      </div>
+    </div>
+    <div class="node" style="left:72.4%;top:380px">
+      <div class="node-hex worker">🖥</div>
+      <div class="node-badge run"></div>
+      <div class="node-lbl">worker-4</div>
+      <div class="node-sub">kubelet · ArgoCD Agent</div>
+      <div class="tooltip">
+        <div class="tooltip-title">ArgoCD App Controller</div>
+        <div class="tooltip-desc">L'agent ArgoCD surveille en continu l'état réel du cluster vs l'état désiré dans Git. Reconcile automatiquement.</div>
+        <span class="tooltip-tag">GitOps</span>
+      </div>
+    </div>
+
+    <!-- Longhorn icon -->
+    <div class="node" style="left:36.2%;top:440px">
+      <div class="node-hex longhorn" style="font-size:1rem">💾</div>
+      <div class="node-lbl">Longhorn CSI</div>
+      <div class="node-sub">Réplication ×3</div>
+      <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
+        <div class="tooltip-title">Longhorn</div>
+        <div class="tooltip-desc">Stockage distribué natif K8s. Chaque volume est répliqué sur N workers. Snapshots, backup S3, UI intégrée.</div>
+        <span class="tooltip-tag">CSI</span><span class="tooltip-tag" style="margin-left:4px">replicated</span>
+      </div>
+    </div>
+
+    <!-- ArgoCD external -->
+    <div class="node" style="left:91.4%;top:80px">
+      <div class="node-hex argo" style="font-size:1rem">🐙</div>
+      <div class="node-badge run"></div>
+      <div class="node-lbl">ArgoCD</div>
+      <div class="node-sub">GitOps Controller</div>
+      <div class="tooltip">
+        <div class="tooltip-title">ArgoCD — GitOps</div>
+        <div class="tooltip-desc">Synchronise le cluster avec un dépôt Git. Le dépôt = source de vérité. Tout changement passe par un commit.</div>
+        <span class="tooltip-tag">GitOps</span>
+      </div>
+    </div>
+
+    <!-- Git repo -->
+    <div class="node" style="left:93%;top:360px">
+      <div class="node-hex" style="background:rgba(179,136,255,0.08);border:2px solid var(--purple);box-shadow:0 0 12px rgba(179,136,255,0.2);width:50px;height:50px;font-size:1rem">📦</div>
+      <div class="node-lbl">Git Repo</div>
+      <div class="node-sub">Source of Truth</div>
+      <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
+        <div class="tooltip-title">Source of Truth</div>
+        <div class="tooltip-desc">Le dépôt Git contient tous les manifests YAML (Deployments, Services, Ingress…). ArgoCD les applique automatiquement.</div>
+        <span class="tooltip-tag">manifest</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--k8s)"></div> Control Plane</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--cyan)"></div> Worker Node</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div> etcd (Raft)</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div> Longhorn replication</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div> ArgoCD GitOps</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--cyan)"></div> API Server → kubelet</div>
+    <div class="leg-item" style="margin-left:auto;font-style:italic;color:#1a3a5a">💡 Hover sur un nœud pour les détails</div>
+  </div>
+</div>
+
+<!-- BOTTOM GRID -->
+<div class="bottom-grid">
+
+  <!-- Nodes status -->
+  <div class="panel">
+    <div class="panel-title">ÉTAT DES NŒUDS</div>
+
+    <div class="node-row">
+      <div class="dot ready"></div>
+      <div class="nr-name">control-plane-1</div>
+      <span class="nr-role cp">CP</span>
+      <div style="width:60px">
+        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 18%</div>
+        <div class="bar-wrap"><div class="bar-fill blue" style="width:18%"></div></div>
+      </div>
+    </div>
+    <div class="node-row">
+      <div class="dot ready"></div>
+      <div class="nr-name">control-plane-2</div>
+      <span class="nr-role cp">CP</span>
+      <div style="width:60px">
+        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 14%</div>
+        <div class="bar-wrap"><div class="bar-fill blue" style="width:14%"></div></div>
+      </div>
+    </div>
+    <div class="node-row">
+      <div class="dot ready"></div>
+      <div class="nr-name">control-plane-3</div>
+      <span class="nr-role cp">CP</span>
+      <div style="width:60px">
+        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 16%</div>
+        <div class="bar-wrap"><div class="bar-fill blue" style="width:16%"></div></div>
+      </div>
+    </div>
+    <div class="node-row">
+      <div class="dot run"></div>
+      <div class="nr-name">worker-1</div>
+      <span class="nr-role wk">WK</span>
+      <div style="width:60px">
+        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 61%</div>
+        <div class="bar-wrap"><div class="bar-fill cyan" style="width:61%"></div></div>
+      </div>
+    </div>
+    <div class="node-row">
+      <div class="dot run"></div>
+      <div class="nr-name">worker-2</div>
+      <span class="nr-role wk">WK</span>
+      <div style="width:60px">
+        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 74%</div>
+        <div class="bar-wrap"><div class="bar-fill cyan" style="width:74%"></div></div>
+      </div>
+    </div>
+    <div class="node-row">
+      <div class="dot run"></div>
+      <div class="nr-name">worker-3</div>
+      <span class="nr-role wk">WK</span>
+      <div style="width:60px">
+        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 48%</div>
+        <div class="bar-wrap"><div class="bar-fill cyan" style="width:48%"></div></div>
+      </div>
+    </div>
+    <div class="node-row">
+      <div class="dot run"></div>
+      <div class="nr-name">worker-4</div>
+      <span class="nr-role wk">WK</span>
+      <div style="width:60px">
+        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 55%</div>
+        <div class="bar-wrap"><div class="bar-fill cyan" style="width:55%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Longhorn volumes -->
+  <div class="panel">
+    <div class="panel-title">LONGHORN — VOLUMES PERSISTANTS</div>
+    <div style="font-size:0.6rem;color:var(--text);margin-bottom:12px;line-height:1.6;">
+      Longhorn découpe les volumes en <span style="color:var(--green)">replicas</span> distribués sur les workers. Même si un node tombe, les données restent accessibles.
+    </div>
+    <div class="vol-grid">
+      <div class="vol-item">
+        <div class="vol-name">postgres-data</div>
+        <div class="vol-size">20 Gi · RWO</div>
+        <div class="vol-rep">✓ replicas ×3</div>
+        <div class="vol-bar"><div class="vol-bar-fill" style="width:42%"></div></div>
+      </div>
+      <div class="vol-item">
+        <div class="vol-name">prometheus-tsdb</div>
+        <div class="vol-size">50 Gi · RWO</div>
+        <div class="vol-rep">✓ replicas ×3</div>
+        <div class="vol-bar"><div class="vol-bar-fill" style="width:68%"></div></div>
+      </div>
+      <div class="vol-item">
+        <div class="vol-name">loki-chunks</div>
+        <div class="vol-size">100 Gi · RWO</div>
+        <div class="vol-rep">✓ replicas ×2</div>
+        <div class="vol-bar"><div class="vol-bar-fill" style="width:31%"></div></div>
+      </div>
+      <div class="vol-item">
+        <div class="vol-name">minio-data</div>
+        <div class="vol-size">200 Gi · RWX</div>
+        <div class="vol-rep">✓ replicas ×3</div>
+        <div class="vol-bar"><div class="vol-bar-fill" style="width:55%"></div></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:0.58rem;color:var(--text);line-height:1.6;">
+      <span style="color:var(--green)">RWO</span> = ReadWriteOnce (1 node) · <span style="color:var(--cyan)">RWX</span> = ReadWriteMany (tous les nodes)<br>
+      Interface Longhorn dispo sur <span style="color:var(--orange)">:8080/longhorn</span> via NodePort
+    </div>
+  </div>
+
+  <!-- ArgoCD apps -->
+  <div class="panel">
+    <div class="panel-title">ARGOCD — APPLICATIONS GITOPS</div>
+    <div style="font-size:0.6rem;color:var(--text);margin-bottom:12px;line-height:1.6;">
+      ArgoCD synchronise en continu le cluster avec le dépôt Git. <span style="color:var(--orange)">Git = source de vérité.</span>
+    </div>
+    <div class="argo-app">
+      <div class="argo-sync synced">SYNCED</div>
+      <div>
+        <div class="argo-name">monitoring-stack</div>
+        <div class="argo-env">Prometheus · Grafana · Alertmanager</div>
+      </div>
+    </div>
+    <div class="argo-app">
+      <div class="argo-sync synced">SYNCED</div>
+      <div>
+        <div class="argo-name">ingress-nginx</div>
+        <div class="argo-env">Ingress Controller · Cert-Manager</div>
+      </div>
+    </div>
+    <div class="argo-app">
+      <div class="argo-sync oos">OUT OF SYNC</div>
+      <div>
+        <div class="argo-name">app-backend</div>
+        <div class="argo-env">Pending deploy → v2.4.1</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+      <div class="concept" style="padding:6px 0;border:none;">
+        <div class="concept-icon" style="font-size:0.9rem">🔄</div>
+        <div>
+          <div class="concept-title">Flux GitOps</div>
+          <div class="concept-desc">commit → push → ArgoCD détecte le diff → applique automatiquement → cluster à jour</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- CONCEPTS ROW -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+
+  <div class="panel">
+    <div class="panel-title">COMPOSANTS CONTROL PLANE</div>
+    <div class="concept">
+      <div class="concept-icon">🔌</div>
+      <div>
+        <div class="concept-title">kube-apiserver</div>
+        <div class="concept-desc">Point d'entrée unique. Valide et persiste tous les objets dans etcd. Expose l'API REST de Kubernetes.</div>
+      </div>
+    </div>
+    <div class="concept">
+      <div class="concept-icon">📅</div>
+      <div>
+        <div class="concept-title">kube-scheduler</div>
+        <div class="concept-desc">Surveille les pods sans node assigné et choisit le meilleur worker selon CPU, RAM, affinités, taints/tolerations.</div>
+      </div>
+    </div>
+    <div class="concept">
+      <div class="concept-icon">🔁</div>
+      <div>
+        <div class="concept-title">controller-manager</div>
+        <div class="concept-desc">Boucles de réconciliation : ReplicaSet, Deployment, Node, Job… S'assure que l'état réel = état désiré.</div>
+      </div>
+    </div>
+    <div class="concept">
+      <div class="concept-icon">🗄</div>
+      <div>
+        <div class="concept-title">etcd</div>
+        <div class="concept-desc">Base de données clé-valeur distribuée (Raft). Stocke l'intégralité de l'état du cluster. À sauvegarder absolument !</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">COMPOSANTS WORKER NODE</div>
+    <div class="concept">
+      <div class="concept-icon">🤖</div>
+      <div>
+        <div class="concept-title">kubelet</div>
+        <div class="concept-desc">Agent sur chaque node. Reçoit les PodSpecs, pilote le container runtime (containerd/CRI-O), remonte les métriques.</div>
+      </div>
+    </div>
+    <div class="concept">
+      <div class="concept-icon">🌐</div>
+      <div>
+        <div class="concept-title">kube-proxy</div>
+        <div class="concept-desc">Gère les règles réseau (iptables ou eBPF). Implémente les Services pour load-balancer le trafic vers les pods.</div>
+      </div>
+    </div>
+    <div class="concept">
+      <div class="concept-icon">📦</div>
+      <div>
+        <div class="concept-title">Container Runtime</div>
+        <div class="concept-desc">containerd ou CRI-O. Lance les containers à partir des images OCI. Kubernetes ne parle plus directement à Docker.</div>
+      </div>
+    </div>
+    <div class="concept">
+      <div class="concept-icon">💾</div>
+      <div>
+        <div class="concept-title">Longhorn CSI Driver</div>
+        <div class="concept-desc">Plugin CSI sur chaque node. Monte les volumes Longhorn dans les pods, réplique les blocs de données entre nodes.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer style="margin-top:36px;">
+  KUBERNETES CLUSTER // ARCHITECTURE PÉDAGOGIQUE // 3 CONTROL PLANES + 4 WORKERS // LONGHORN + ARGOCD
+</footer>
+
+</div>
+</body>
+</html>
