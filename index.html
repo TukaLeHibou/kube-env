@@ -3,845 +3,1296 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>K8s Cluster — Architecture Pédagogique</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<title>KubeEnv — Cluster K8s HA · Guide Pédagogique</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root {
-  --k8s:    #326CE5;
-  --k8s-dim:#326CE522;
-  --k8s-glow:rgba(50,108,229,0.4);
-  --cyan:   #00e5ff;
-  --cyan-dim:rgba(0,229,255,0.15);
-  --green:  #00ffb3;
-  --green-dim:rgba(0,255,179,0.15);
-  --orange: #ff8c42;
-  --red:    #ff4466;
-  --yellow: #ffd166;
-  --purple: #b388ff;
-  --bg:     #04080f;
-  --bg2:    #070d17;
-  --panel:  #0a1525;
-  --panel2: #0d1e33;
-  --border: #132240;
-  --text:   #7a9bbf;
-  --bright: #b8d4f0;
-  --white:  #deeeff;
+:root{
+  --bg:#04080f;--bg2:#070d17;--panel:#0a1525;--panel2:#0d1e33;--panel3:#0f2138;
+  --border:#132240;--border2:#1a3050;
+  --k8s:#326CE5;--k8s-g:rgba(50,108,229,0.35);
+  --cyan:#00e5ff;--cyan-d:rgba(0,229,255,0.12);
+  --green:#00ffb3;--green-d:rgba(0,255,179,0.12);
+  --orange:#ff8c42;--red:#ff4466;--yellow:#ffd166;--purple:#b388ff;
+  --text:#5a7a9a;--bright:#a0c4e0;--white:#deeeff;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-
 html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:300;}
 
-body{
-  background:var(--bg);
-  color:var(--text);
-  font-family:'JetBrains Mono',monospace;
-  min-height:100vh;
-  overflow-x:hidden;
-}
+/* ─── NAV ─── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;height:54px;background:rgba(4,8,15,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 2rem;gap:2rem;}
+.nav-logo{font-family:var(--mono);font-weight:700;font-size:.85rem;color:var(--cyan);letter-spacing:.15em;white-space:nowrap;text-decoration:none;}
+.nav-logo span{color:var(--k8s);}
+.nav-links{display:flex;gap:2px;list-style:none;flex:1;}
+.nav-links a{color:var(--text);text-decoration:none;font-size:.78rem;padding:.3rem .7rem;border-radius:4px;transition:all .15s;font-family:var(--mono);}
+.nav-links a:hover{color:var(--bright);background:rgba(255,255,255,0.04);}
+.nav-links a.active{color:var(--cyan);}
+.nav-status{display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:.7rem;color:var(--text);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
 
-/* Scanlines */
-body::before{
-  content:'';position:fixed;inset:0;
-  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);
-  pointer-events:none;z-index:200;
-}
+/* ─── HERO ─── */
+#hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 2rem 3rem;position:relative;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 25% 40%,rgba(50,108,229,0.06) 0%,transparent 55%),radial-gradient(ellipse at 75% 60%,rgba(0,229,255,0.04) 0%,transparent 55%);}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(19,34,64,.4) 1px,transparent 1px),linear-gradient(90deg,rgba(19,34,64,.4) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse at center,black 0%,transparent 72%);}
+.hero-inner{position:relative;text-align:center;max-width:860px;}
+.hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:var(--panel);border:1px solid var(--border2);border-radius:100px;padding:.3rem .9rem;font-family:var(--mono);font-size:.7rem;color:var(--cyan);margin-bottom:1.5rem;}
+.hero-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);}
+.hero-title{font-family:var(--sans);font-weight:800;font-size:clamp(2.4rem,5.5vw,4.2rem);line-height:1.08;letter-spacing:-.03em;color:var(--white);margin-bottom:.9rem;}
+.hero-title .hl-cyan{color:var(--cyan);}
+.hero-title .hl-k8s{color:var(--k8s);}
+.hero-title .hl-green{color:var(--green);}
+.hero-sub{font-size:1rem;color:var(--text);max-width:560px;margin:0 auto 2.5rem;line-height:1.75;}
+.hero-stats{display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap;margin-bottom:2.5rem;}
+.hstat{text-align:center;}
+.hstat-val{font-family:var(--mono);font-size:1.8rem;font-weight:700;color:var(--white);display:block;line-height:1;}
+.hstat-lbl{font-size:.68rem;color:var(--text);text-transform:uppercase;letter-spacing:.1em;margin-top:.3rem;}
+.hero-terminal{background:var(--panel);border:1px solid var(--border2);border-radius:10px;max-width:680px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.term-bar{background:var(--panel2);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;}
+.term-dots{display:flex;gap:.35rem;}
+.term-dot{width:11px;height:11px;border-radius:50%;}
+.td-r{background:#ff5f57;}.td-y{background:#febc2e;}.td-g{background:#28c840;}
+.term-title{flex:1;text-align:center;font-family:var(--mono);font-size:.7rem;color:var(--text);}
+.term-body{padding:1.25rem 1.5rem;font-family:var(--mono);font-size:.82rem;line-height:1.9;min-height:190px;}
+.tl{display:block;}
+.pr{color:var(--green);}
+.tc{color:var(--white);}
+.to{color:var(--text);}
+.to.g{color:var(--green);}
+.to.c{color:var(--cyan);}
+.to.y{color:var(--yellow);}
+.to.o{color:var(--orange);}
+.cursor{display:inline-block;width:7px;height:.9em;background:var(--green);vertical-align:text-bottom;animation:blink 1s step-end infinite;}
 
-/* Hex grid bg */
-body::after{
-  content:'';position:fixed;inset:0;
-  background-image:
-    radial-gradient(circle at 20% 20%, rgba(50,108,229,0.04) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(0,229,255,0.03) 0%, transparent 50%);
-  pointer-events:none;z-index:0;
-}
+/* ─── SECTIONS ─── */
+section{padding:5rem 2rem;}
+.container{max-width:1240px;margin:0 auto;}
+.sec-tag{font-family:var(--mono);font-size:.68rem;color:var(--cyan);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.6rem;display:block;}
+.sec-title{font-size:clamp(1.7rem,3.5vw,2.5rem);font-weight:700;color:var(--white);letter-spacing:-.02em;margin-bottom:.75rem;}
+.sec-desc{color:var(--text);font-size:.9rem;line-height:1.75;max-width:580px;}
 
-.wrapper{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:28px 20px 60px;}
+/* ─── PANELS ─── */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;position:relative;overflow:hidden;}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--k8s),transparent);opacity:.5;}
+.panel-title{font-family:var(--mono);font-size:.6rem;letter-spacing:.28em;color:var(--cyan);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.panel-title::before{content:'';width:6px;height:6px;background:var(--cyan);border-radius:50%;box-shadow:0 0 7px var(--cyan);animation:blink 2.5s infinite;}
 
-/* ───── HEADER ───── */
-header{
-  display:flex;align-items:flex-end;justify-content:space-between;
-  margin-bottom:36px;padding-bottom:18px;
-  border-bottom:1px solid var(--border);
-  flex-wrap:wrap;gap:16px;
-}
-.logo{
-  font-family:'Orbitron',sans-serif;font-weight:900;
-  font-size:clamp(1.5rem,3.5vw,2.4rem);
-  color:var(--cyan);letter-spacing:0.12em;
-  text-shadow:0 0 24px rgba(0,229,255,0.3),0 0 60px rgba(0,229,255,0.1);
-}
-.logo em{color:var(--k8s);font-style:normal;}
-.logo small{
-  display:block;font-size:0.38em;letter-spacing:0.35em;
-  color:var(--text);margin-top:5px;font-family:'Share Tech Mono',monospace;
-  text-shadow:none;
-}
-.header-pills{display:flex;gap:12px;flex-wrap:wrap;}
-.pill{
-  background:var(--panel);border:1px solid var(--border);
-  border-radius:4px;padding:7px 14px;text-align:center;
-}
-.pill .lbl{font-size:0.55rem;letter-spacing:0.2em;color:var(--text);text-transform:uppercase;}
-.pill .val{font-size:0.82rem;color:var(--cyan);margin-top:2px;font-family:'Orbitron',sans-serif;}
-.pill .val.green{color:var(--green);}
-.pill .val.orange{color:var(--orange);}
-
-/* ───── PANELS ───── */
-.panel{
-  background:var(--panel);border:1px solid var(--border);
-  border-radius:8px;padding:22px;position:relative;overflow:hidden;
-}
-.panel::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--k8s),transparent);
-  opacity:0.6;
-}
-.panel-title{
-  font-family:'Orbitron',sans-serif;font-size:0.6rem;
-  letter-spacing:0.3em;color:var(--cyan);text-transform:uppercase;
-  margin-bottom:18px;display:flex;align-items:center;gap:8px;
-}
-.panel-title::before{
-  content:'';width:6px;height:6px;background:var(--cyan);border-radius:50%;
-  box-shadow:0 0 8px var(--cyan);animation:blink 2.5s infinite;
-}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
-
-/* ───── TOPOLOGY SVG AREA ───── */
-.topo-wrap{grid-column:1/-1;padding:0;}
-.topo-inner{position:relative;width:100%;height:480px;}
+/* ─── TOPOLOGY ─── */
+#topology{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.topo-wrap{padding:0;}
+.topo-inner{position:relative;width:100%;height:490px;}
 .topo-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.node{position:absolute;transform:translate(-50%,-50%);text-align:center;cursor:pointer;transition:transform .2s;z-index:10;}
+.node:hover{transform:translate(-50%,-50%) scale(1.1);}
+.node:hover .tooltip{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
+.node-hex{width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:1.2rem;position:relative;}
+.node-hex.cp{background:rgba(50,108,229,.12);border:2px solid var(--k8s);box-shadow:0 0 14px var(--k8s-g);animation:pk 3s infinite;}
+.node-hex.wk{background:rgba(0,229,255,.08);border:2px solid var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.25);animation:pc 3.5s infinite;}
+.node-hex.argo{background:rgba(255,140,66,.1);border:2px solid var(--orange);box-shadow:0 0 12px rgba(255,140,66,.3);animation:po 2.8s infinite;width:52px;height:52px;}
+.node-hex.lh{background:rgba(0,255,179,.08);border:2px solid var(--green);box-shadow:0 0 12px rgba(0,255,179,.25);animation:pg 3.2s infinite;width:52px;height:52px;}
+.node-hex.inet{background:rgba(0,229,255,.06);border:2px solid rgba(0,229,255,.4);width:52px;height:52px;animation:pc 4s infinite;}
+.node-hex.etcd{width:44px;height:44px;border-radius:50%;background:rgba(255,209,102,.08);border:2px solid var(--yellow);box-shadow:0 0 10px rgba(255,209,102,.25);font-size:1rem;}
+.node-hex.vip{background:rgba(179,136,255,.1);border:2px solid var(--purple);box-shadow:0 0 12px rgba(179,136,255,.3);animation:pp 3s infinite;}
+@keyframes pk{0%,100%{box-shadow:0 0 14px var(--k8s-g);}50%{box-shadow:0 0 28px var(--k8s-g),0 0 50px rgba(50,108,229,.1);}}
+@keyframes pc{0%,100%{box-shadow:0 0 12px rgba(0,229,255,.25);}50%{box-shadow:0 0 24px rgba(0,229,255,.5);}}
+@keyframes po{0%,100%{box-shadow:0 0 12px rgba(255,140,66,.3);}50%{box-shadow:0 0 24px rgba(255,140,66,.6);}}
+@keyframes pg{0%,100%{box-shadow:0 0 12px rgba(0,255,179,.25);}50%{box-shadow:0 0 24px rgba(0,255,179,.5);}}
+@keyframes pp{0%,100%{box-shadow:0 0 12px rgba(179,136,255,.3);}50%{box-shadow:0 0 24px rgba(179,136,255,.6);}}
+.node-lbl{font-family:var(--mono);font-size:.55rem;color:var(--bright);letter-spacing:.05em;white-space:nowrap;}
+.node-sub{font-family:var(--mono);font-size:.47rem;color:var(--text);margin-top:2px;}
+.nbadge{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--bg);}
+.nbadge.run{background:var(--green);box-shadow:0 0 5px var(--green);}
+.nbadge.ready{background:var(--k8s);box-shadow:0 0 5px var(--k8s);}
+.tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(5px);background:var(--panel2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;width:210px;text-align:left;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,.7);}
+.tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
+.tt-title{font-family:var(--mono);font-size:.6rem;color:var(--cyan);margin-bottom:5px;letter-spacing:.1em;}
+.tt-desc{font-family:var(--mono);font-size:.57rem;color:var(--text);line-height:1.6;}
+.tt-tag{display:inline-block;margin-top:5px;font-size:.5rem;background:rgba(50,108,229,.15);color:var(--k8s);border:1px solid rgba(50,108,229,.3);padding:1px 6px;border-radius:2px;margin-right:3px;}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.leg{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.57rem;color:var(--text);}
+.leg-dot{width:8px;height:8px;border-radius:50%;}
 
-/* Nodes */
-.node{
-  position:absolute;transform:translate(-50%,-50%);
-  text-align:center;cursor:pointer;
-  transition:transform 0.2s;z-index:10;
-}
-.node:hover{transform:translate(-50%,-50%) scale(1.08);}
-.node:hover .tooltip{opacity:1;pointer-events:auto;transform:translateY(0);}
-
-.node-hex{
-  width:56px;height:56px;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  margin:0 auto 6px;position:relative;font-size:1.2rem;
-}
-.node-hex.cp{
-  background:rgba(50,108,229,0.12);border:2px solid var(--k8s);
-  box-shadow:0 0 14px var(--k8s-glow);animation:pulse-k8s 3s infinite;
-}
-.node-hex.worker{
-  background:rgba(0,229,255,0.08);border:2px solid var(--cyan);
-  box-shadow:0 0 12px rgba(0,229,255,0.25);animation:pulse-cyan 3.5s infinite;
-}
-.node-hex.argo{
-  background:rgba(255,140,66,0.1);border:2px solid var(--orange);
-  box-shadow:0 0 12px rgba(255,140,66,0.3);animation:pulse-orange 2.8s infinite;
-  width:52px;height:52px;
-}
-.node-hex.longhorn{
-  background:rgba(0,255,179,0.08);border:2px solid var(--green);
-  box-shadow:0 0 12px rgba(0,255,179,0.25);animation:pulse-green 3.2s infinite;
-  width:52px;height:52px;
-}
-.node-hex.internet{
-  background:rgba(0,229,255,0.06);border:2px solid rgba(0,229,255,0.4);
-  width:60px;height:60px;animation:pulse-cyan 4s infinite;
-}
-.node-hex.etcd{
-  width:44px;height:44px;border-radius:50%;
-  background:rgba(255,209,102,0.08);border:2px solid var(--yellow);
-  box-shadow:0 0 10px rgba(255,209,102,0.25);font-size:1rem;
-}
-@keyframes pulse-k8s{0%,100%{box-shadow:0 0 14px var(--k8s-glow);}50%{box-shadow:0 0 28px var(--k8s-glow),0 0 50px rgba(50,108,229,0.1);}}
-@keyframes pulse-cyan{0%,100%{box-shadow:0 0 12px rgba(0,229,255,0.25);}50%{box-shadow:0 0 24px rgba(0,229,255,0.5);}}
-@keyframes pulse-orange{0%,100%{box-shadow:0 0 12px rgba(255,140,66,0.3);}50%{box-shadow:0 0 24px rgba(255,140,66,0.6);}}
-@keyframes pulse-green{0%,100%{box-shadow:0 0 12px rgba(0,255,179,0.25);}50%{box-shadow:0 0 24px rgba(0,255,179,0.5);}}
-
-.node-lbl{font-size:0.55rem;color:var(--bright);letter-spacing:0.05em;white-space:nowrap;}
-.node-sub{font-size:0.47rem;color:var(--text);margin-top:2px;}
-.node-badge{
-  position:absolute;top:-3px;right:-3px;
-  width:10px;height:10px;border-radius:50%;border:1px solid var(--bg);
-}
-.node-badge.run{background:var(--green);box-shadow:0 0 5px var(--green);}
-.node-badge.ready{background:var(--k8s);box-shadow:0 0 5px var(--k8s);}
-
-/* Tooltip */
-.tooltip{
-  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(6px);
-  background:var(--panel2);border:1px solid var(--k8s);border-radius:6px;
-  padding:10px 14px;width:200px;text-align:left;
-  opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s;
-  z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.6);
-}
-.tooltip::after{
-  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:6px solid transparent;border-top-color:var(--k8s);
-}
-.tooltip-title{font-family:'Orbitron',sans-serif;font-size:0.6rem;color:var(--cyan);margin-bottom:6px;letter-spacing:0.1em;}
-.tooltip-desc{font-size:0.58rem;color:var(--text);line-height:1.6;}
-.tooltip-tag{
-  display:inline-block;margin-top:5px;font-size:0.5rem;
-  background:rgba(50,108,229,0.15);color:var(--k8s);
-  border:1px solid rgba(50,108,229,0.3);padding:1px 6px;border-radius:2px;
-}
-
-/* Packet animation */
-.pkt{filter:drop-shadow(0 0 3px currentColor);}
-
-/* ───── BOTTOM GRID ───── */
+/* ─── BOTTOM GRID ─── */
 .bottom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px;}
 @media(max-width:900px){.bottom-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:580px){.bottom-grid{grid-template-columns:1fr;}}
-
-/* Node rows */
-.node-row{
-  display:flex;align-items:center;gap:10px;padding:8px 12px;
-  background:rgba(0,0,0,0.25);border-radius:4px;border:1px solid var(--border);
-  border-left:3px solid transparent;margin-bottom:7px;
-  transition:border-color 0.2s,background 0.2s;
-}
+.node-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(0,0,0,.25);border-radius:4px;border:1px solid var(--border);border-left:3px solid transparent;margin-bottom:7px;transition:border-color .2s,background .2s;}
 .node-row:last-child{margin-bottom:0;}
-.node-row:hover{background:rgba(50,108,229,0.06);border-left-color:var(--k8s);}
+.node-row:hover{background:rgba(50,108,229,.06);border-left-color:var(--k8s);}
 .node-row .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .dot.run{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
 .dot.ready{background:var(--k8s);box-shadow:0 0 6px var(--k8s);}
-.nr-name{font-size:0.72rem;color:var(--bright);flex:1;}
-.nr-role{
-  font-size:0.52rem;letter-spacing:0.1em;padding:1px 6px;border-radius:2px;
-}
-.nr-role.cp{background:rgba(50,108,229,0.15);color:var(--k8s);border:1px solid rgba(50,108,229,0.3);}
-.nr-role.wk{background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.25);}
-.nr-cpu{font-size:0.6rem;color:var(--text);width:32px;text-align:right;}
+.nr-name{font-family:var(--mono);font-size:.72rem;color:var(--bright);flex:1;}
+.nr-role{font-family:var(--mono);font-size:.52rem;letter-spacing:.1em;padding:1px 6px;border-radius:2px;}
+.nr-role.cp{background:rgba(50,108,229,.15);color:var(--k8s);border:1px solid rgba(50,108,229,.3);}
+.nr-role.wk{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25);}
 .bar-wrap{height:3px;background:var(--border);border-radius:2px;margin-top:3px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:2px;animation:grow 1.5s ease-out forwards;transform-origin:left;}
-.bar-fill.blue{background:linear-gradient(90deg,#1a50a0,var(--k8s));box-shadow:0 0 4px var(--k8s);}
-.bar-fill.cyan{background:linear-gradient(90deg,#007a99,var(--cyan));box-shadow:0 0 4px var(--cyan);}
-.bar-fill.green{background:linear-gradient(90deg,#00a070,var(--green));box-shadow:0 0 4px var(--green);}
-.bar-fill.orange{background:linear-gradient(90deg,#aa4400,var(--orange));box-shadow:0 0 4px var(--orange);}
+.bar-fill.blue{background:linear-gradient(90deg,#1a50a0,var(--k8s));}
+.bar-fill.teal{background:linear-gradient(90deg,#007a99,var(--cyan));}
 @keyframes grow{from{transform:scaleX(0);}to{transform:scaleX(1);}}
-
-/* Longhorn volumes */
 .vol-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.vol-item{
-  background:rgba(0,0,0,0.25);border:1px solid var(--border);
-  border-radius:4px;padding:8px 10px;
-}
-.vol-name{font-size:0.62rem;color:var(--bright);margin-bottom:4px;}
-.vol-size{font-size:0.55rem;color:var(--text);}
-.vol-rep{font-size:0.52rem;color:var(--green);margin-top:3px;}
+.vol-item{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:4px;padding:8px 10px;}
+.vol-name{font-family:var(--mono);font-size:.62rem;color:var(--bright);margin-bottom:3px;}
+.vol-size{font-family:var(--mono);font-size:.55rem;color:var(--text);}
+.vol-rep{font-family:var(--mono);font-size:.52rem;color:var(--green);margin-top:3px;}
 .vol-bar{height:3px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden;}
 .vol-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#00a070,var(--green));}
-
-/* ArgoCD apps */
-.argo-app{
-  display:flex;align-items:center;gap:10px;padding:8px 12px;
-  background:rgba(0,0,0,0.25);border:1px solid var(--border);
-  border-radius:4px;margin-bottom:7px;
-}
-.argo-app:last-child{margin-bottom:0;}
-.argo-sync{font-size:0.6rem;padding:1px 7px;border-radius:2px;flex-shrink:0;}
-.argo-sync.synced{background:rgba(0,255,179,0.1);color:var(--green);border:1px solid rgba(0,255,179,0.3);}
-.argo-sync.oos{background:rgba(255,140,66,0.1);color:var(--orange);border:1px solid rgba(255,140,66,0.3);}
-.argo-name{font-size:0.72rem;color:var(--bright);flex:1;}
-.argo-env{font-size:0.55rem;color:var(--text);}
-
-/* Concepts */
-.concept{
-  display:flex;gap:10px;padding:8px 0;
-  border-bottom:1px solid rgba(19,34,64,0.6);
-}
+.argo-app{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:4px;margin-bottom:7px;}
+.argo-sync{font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:3px;flex-shrink:0;}
+.argo-sync.synced{background:rgba(0,255,179,.1);color:var(--green);border:1px solid rgba(0,255,179,.3);}
+.argo-sync.oos{background:rgba(255,140,66,.1);color:var(--orange);border:1px solid rgba(255,140,66,.3);}
+.argo-name{font-family:var(--mono);font-size:.72rem;color:var(--bright);flex:1;}
+.argo-env{font-family:var(--mono);font-size:.55rem;color:var(--text);}
+.concept{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid rgba(19,34,64,.7);}
 .concept:last-child{border-bottom:none;}
-.concept-icon{font-size:1.1rem;flex-shrink:0;width:28px;text-align:center;}
-.concept-title{font-size:0.68rem;color:var(--bright);margin-bottom:3px;}
-.concept-desc{font-size:0.58rem;color:var(--text);line-height:1.55;}
+.concept-icon{font-size:1.1rem;flex-shrink:0;width:28px;text-align:center;margin-top:1px;}
+.concept-title{font-family:var(--mono);font-size:.68rem;color:var(--bright);margin-bottom:3px;}
+.concept-desc{font-family:var(--mono);font-size:.57rem;color:var(--text);line-height:1.6;}
 
-/* Legend */
-.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
-.leg-item{display:flex;align-items:center;gap:6px;font-size:0.58rem;color:var(--text);}
-.leg-dot{width:8px;height:8px;border-radius:50%;}
+/* ─── INSTALL GUIDE ─── */
+#install{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.install-layout{display:grid;grid-template-columns:240px 1fr;gap:2rem;align-items:start;}
+.install-nav{position:sticky;top:70px;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.install-nav-title{font-family:var(--mono);font-size:.58rem;letter-spacing:.2em;color:var(--text);padding:.7rem 1rem;border-bottom:1px solid var(--border);text-transform:uppercase;}
+.install-nav-list{list-style:none;}
+.install-btn{width:100%;text-align:left;padding:.55rem 1rem;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:.6rem;font-family:var(--mono);font-size:.7rem;color:var(--text);transition:all .15s;}
+.install-btn:last-child{border-bottom:none;}
+.install-btn:hover{background:rgba(255,255,255,.03);color:var(--bright);}
+.install-btn.active{background:rgba(50,108,229,.08);color:var(--cyan);}
+.install-btn.done{color:var(--green);}
+.install-num{width:18px;height:18px;border-radius:50%;background:var(--panel2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.58rem;flex-shrink:0;}
+.install-btn.active .install-num{background:var(--k8s);border-color:var(--k8s);color:#fff;}
+.install-btn.done .install-num{background:rgba(0,255,179,.15);border-color:var(--green);color:var(--green);}
+.install-phase{display:none;}
+.install-phase.active{display:block;animation:fadeup .3s ease;}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.phase-h{margin-bottom:1.5rem;}
+.phase-h h2{font-size:1.4rem;font-weight:700;color:var(--white);margin-bottom:.4rem;}
+.phase-h p{font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.7;}
+.alert{border-radius:6px;padding:.85rem 1.1rem;font-family:var(--mono);font-size:.75rem;line-height:1.6;margin-bottom:1.25rem;display:flex;gap:.6rem;}
+.alert.warn{background:rgba(255,140,66,.08);border:1px solid rgba(255,140,66,.25);color:var(--orange);}
+.alert.info{background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2);color:var(--cyan);}
+.alert.ok{background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--green);}
+.step{margin-bottom:1.5rem;}
+.step-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;}
+.step-n{width:24px;height:24px;border-radius:50%;border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.65rem;font-weight:700;color:var(--cyan);flex-shrink:0;}
+.step-title{font-weight:600;font-size:.9rem;color:var(--white);}
+.step-desc{font-family:var(--mono);font-size:.72rem;color:var(--text);margin-bottom:.7rem;margin-left:2rem;line-height:1.65;}
+.code-block{background:var(--bg);border:1px solid var(--border2);border-radius:6px;overflow:hidden;margin-bottom:.75rem;}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:.45rem .9rem;background:var(--panel2);border-bottom:1px solid var(--border);}
+.code-lang{font-family:var(--mono);font-size:.65rem;color:var(--text);text-transform:uppercase;}
+.code-target{font-family:var(--mono);font-size:.65rem;color:var(--yellow);}
+.copy-btn{background:none;border:1px solid var(--border2);color:var(--text);font-size:.65rem;font-family:var(--mono);padding:.15rem .5rem;border-radius:3px;cursor:pointer;transition:all .15s;}
+.copy-btn:hover{border-color:var(--border2);color:var(--bright);}
+.copy-btn.copied{border-color:var(--green);color:var(--green);}
+.code-content{padding:1rem 1.1rem;font-family:var(--mono);font-size:.8rem;line-height:1.75;overflow-x:auto;white-space:pre;color:var(--bright);}
+.cm{color:var(--text);font-style:italic;}
+.ck{color:#ff7b72;}
+.cv{color:var(--green);}
+.cf{color:var(--yellow);}
+.cs{color:var(--orange);}
+.phase-nav-btns{display:flex;gap:.75rem;margin-top:1.5rem;}
+.pnav-btn{background:var(--panel);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:.75rem;padding:.5rem 1rem;border-radius:5px;cursor:pointer;transition:all .15s;}
+.pnav-btn:hover{color:var(--white);border-color:var(--border2);}
+.pnav-btn.next{background:rgba(50,108,229,.15);border-color:rgba(50,108,229,.4);color:var(--cyan);}
+.pnav-btn.next:hover{background:rgba(50,108,229,.25);}
 
-/* Fade in */
-.panel{animation:fadein 0.5s ease forwards;opacity:0;}
-.panel:nth-child(1){animation-delay:0.05s;}
-.panel:nth-child(2){animation-delay:0.12s;}
-.panel:nth-child(3){animation-delay:0.19s;}
-.panel:nth-child(4){animation-delay:0.26s;}
-.panel:nth-child(5){animation-delay:0.33s;}
-.panel:nth-child(6){animation-delay:0.4s;}
-@keyframes fadein{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+/* ─── CHECKLIST ─── */
+#checklist{padding:5rem 2rem;}
+.checklist-layout{display:grid;grid-template-columns:1fr 300px;gap:2rem;align-items:start;}
+.checklist-phases{display:flex;flex-direction:column;gap:1.5rem;}
+.cl-phase{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.cl-phase-head{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.1rem;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+.cl-phase-title{font-family:var(--mono);font-size:.72rem;color:var(--bright);display:flex;align-items:center;gap:.6rem;}
+.cl-phase-count{font-family:var(--mono);font-size:.65rem;color:var(--text);}
+.cl-items{list-style:none;padding:.5rem;}
+.cl-item{display:flex;align-items:flex-start;gap:.75rem;padding:.6rem .7rem;border-radius:5px;margin-bottom:.3rem;cursor:pointer;transition:all .15s;border:1px solid transparent;}
+.cl-item:hover{background:rgba(255,255,255,.02);border-color:var(--border);}
+.cl-item.done{background:rgba(0,255,179,.04);border-color:rgba(0,255,179,.15);}
+.cl-item.done .cl-text{color:var(--text);text-decoration:line-through;}
+.cl-cb{width:17px;height:17px;border-radius:4px;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;transition:all .2s;font-size:.7rem;}
+.cl-item.done .cl-cb{background:var(--green);border-color:var(--green);color:#000;}
+.cl-text{font-family:var(--mono);font-size:.75rem;color:var(--bright);line-height:1.4;transition:all .2s;}
+.cl-sub{font-family:var(--mono);font-size:.62rem;color:var(--text);margin-top:.2rem;}
+.checklist-sidebar{position:sticky;top:70px;display:flex;flex-direction:column;gap:1rem;}
+.progress-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1.25rem;}
+.prog-title{font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;color:var(--text);text-transform:uppercase;margin-bottom:1.1rem;text-align:center;}
+.ring-wrap{display:flex;justify-content:center;margin-bottom:1.1rem;}
+.ring-bg{fill:none;stroke:var(--border2);stroke-width:8;}
+.ring-fill{fill:none;stroke:var(--green);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
+.ring-pct{font-family:var(--mono);font-size:1.3rem;font-weight:700;fill:var(--white);text-anchor:middle;dominant-baseline:central;}
+.ring-lbl{font-family:var(--mono);font-size:.55rem;fill:var(--text);text-anchor:middle;dominant-baseline:central;}
+.phase-bars{list-style:none;}
+.phase-bar-item{display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:.62rem;color:var(--text);}
+.phase-bar-item:last-child{border-bottom:none;}
+.phase-bar-item .pbi-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mini-bar{flex:2;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
+.mini-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s;}
+.pbi-count{min-width:28px;text-align:right;color:var(--text);}
+.reset-btn{width:100%;padding:.55rem;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:5px;font-family:var(--mono);font-size:.7rem;cursor:pointer;transition:all .2s;margin-top:.5rem;}
+.reset-btn:hover{border-color:var(--red);color:var(--red);}
 
-footer{text-align:center;font-size:0.55rem;color:#132240;margin-top:44px;letter-spacing:0.2em;}
+/* ─── ANIMATIONS ─── */
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+@keyframes fadein{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.panel{animation:fadein .5s ease both;}
+
+/* ─── FOOTER ─── */
+footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;padding:2rem;letter-spacing:.2em;border-top:1px solid var(--border);}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){
+  .install-layout{grid-template-columns:1fr;}
+  .install-nav{position:static;}
+  .checklist-layout{grid-template-columns:1fr;}
+  .checklist-sidebar{position:static;}
+  nav .nav-links{display:none;}
+}
 </style>
 </head>
 <body>
-<div class="wrapper">
 
-<!-- HEADER -->
-<header>
-  <div class="logo">
-    <em>K8S</em> CLUSTER
-    <small>ARCHITECTURE KUBERNETES // PÉDAGOGIQUE // 3 CP + 4 WORKERS</small>
-  </div>
-  <div class="header-pills">
-    <div class="pill"><div class="lbl">Version</div><div class="val">v1.31.0</div></div>
-    <div class="pill"><div class="lbl">Nodes</div><div class="val green">7 / 7</div></div>
-    <div class="pill"><div class="lbl">Pods</div><div class="val green">42 Running</div></div>
-    <div class="pill"><div class="lbl">Longhorn</div><div class="val green">Healthy</div></div>
-    <div class="pill"><div class="lbl">ArgoCD</div><div class="val orange">3 Apps</div></div>
-  </div>
-</header>
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#hero"><span>K8S</span>ENV</a>
+  <ul class="nav-links">
+    <li><a href="#hero" class="active">Accueil</a></li>
+    <li><a href="#topology">Topologie</a></li>
+    <li><a href="#composants">Composants</a></li>
+    <li><a href="#install">Installation</a></li>
+    <li><a href="#checklist">Checklist</a></li>
+  </ul>
+  <div class="nav-status"><div class="status-dot"></div> 7/7 nodes · Ready</div>
+</nav>
 
-<!-- TOPOLOGY PANEL -->
-<div class="panel topo-wrap" style="margin-bottom:16px;">
-  <div class="panel-title">TOPOLOGIE DU CLUSTER — FLUX DE COMMUNICATION</div>
-  <div class="topo-inner" id="topo">
-
-    <svg class="topo-svg" id="topo-svg" viewBox="0 0 1160 480" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <filter id="glow-blue"><feGaussianBlur stdDeviation="2.5" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
-        <filter id="glow-cyan"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
-        <filter id="glow-grn"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
-      </defs>
-
-      <!-- ── etcd cluster ring (behind control planes) -->
-      <ellipse cx="580" cy="170" rx="300" ry="115" fill="none" stroke="rgba(255,209,102,0.07)" stroke-width="1.5" stroke-dasharray="8 5"/>
-
-      <!-- ── etcd ↔ etcd sync lines -->
-      <line x1="300" y1="135" x2="460" y2="135" stroke="rgba(255,209,102,0.2)" stroke-width="1" stroke-dasharray="3 5"/>
-      <line x1="460" y1="135" x2="620" y2="135" stroke="rgba(255,209,102,0.2)" stroke-width="1" stroke-dasharray="3 5"/>
-      <line x1="300" y1="135" x2="620" y2="135" stroke="rgba(255,209,102,0.12)" stroke-width="1" stroke-dasharray="3 5"/>
-
-      <!-- ── kubectl → API Server cp1 -->
-      <line x1="80" y1="80" x2="380" y2="200" stroke="rgba(0,229,255,0.15)" stroke-width="1.5" stroke-dasharray="5 5"/>
-
-      <!-- ── CP → CP (HA) -->
-      <line x1="380" y1="200" x2="580" y2="200" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
-      <line x1="580" y1="200" x2="780" y2="200" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
-      <line x1="380" y1="200" x2="780" y2="200" stroke="rgba(50,108,229,0.12)" stroke-width="1" stroke-dasharray="4 6"/>
-
-      <!-- ── CP → Workers -->
-      <!-- cp1 → w1 w2 -->
-      <line x1="380" y1="230" x2="200" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
-      <line x1="380" y1="230" x2="420" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
-      <!-- cp2 center -->
-      <line x1="580" y1="230" x2="620" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
-      <!-- cp3 → w4 -->
-      <line x1="780" y1="230" x2="840" y2="360" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
-
-      <!-- ── Longhorn replication lines (workers) -->
-      <line x1="200" y1="380" x2="420" y2="380" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
-      <line x1="420" y1="380" x2="620" y2="380" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
-      <line x1="620" y1="380" x2="840" y2="380" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
-      <!-- Longhorn controller (on worker-2) to volumes -->
-      <line x1="420" y1="340" x2="420" y2="430" stroke="rgba(0,255,179,0.15)" stroke-width="1" stroke-dasharray="3 4"/>
-
-      <!-- ── ArgoCD → Git (external) → cluster -->
-      <line x1="1060" y1="80" x2="780" y2="200" stroke="rgba(255,140,66,0.2)" stroke-width="1.5" stroke-dasharray="5 4"/>
-      <line x1="1060" y1="80" x2="1080" y2="360" stroke="rgba(255,140,66,0.15)" stroke-width="1" stroke-dasharray="5 4"/>
-
-      <!-- ─── ANIMATED PACKETS ─── -->
-
-      <!-- kubectl → cp1 -->
-      <circle r="3.5" fill="#00e5ff" filter="url(#glow-cyan)">
-        <animateMotion dur="2.4s" repeatCount="indefinite">
-          <mpath href="#p-kubectl-cp1"/>
-        </animateMotion>
-      </circle>
-      <path id="p-kubectl-cp1" d="M80,80 L380,200" fill="none"/>
-
-      <!-- cp1 → cp2 -->
-      <circle r="3" fill="#326CE5" filter="url(#glow-blue)">
-        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.3s">
-          <mpath href="#p-cp1-cp2"/>
-        </animateMotion>
-      </circle>
-      <path id="p-cp1-cp2" d="M380,200 L580,200" fill="none"/>
-
-      <!-- cp2 → cp3 -->
-      <circle r="3" fill="#326CE5" filter="url(#glow-blue)">
-        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.9s">
-          <mpath href="#p-cp2-cp3"/>
-        </animateMotion>
-      </circle>
-      <path id="p-cp2-cp3" d="M580,200 L780,200" fill="none"/>
-
-      <!-- etcd sync -->
-      <circle r="2.5" fill="#ffd166" opacity="0.8">
-        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.2s">
-          <mpath href="#p-etcd12"/>
-        </animateMotion>
-      </circle>
-      <path id="p-etcd12" d="M300,135 L460,135" fill="none"/>
-      <circle r="2.5" fill="#ffd166" opacity="0.8">
-        <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.9s">
-          <mpath href="#p-etcd23"/>
-        </animateMotion>
-      </circle>
-      <path id="p-etcd23" d="M460,135 L620,135" fill="none"/>
-
-      <!-- cp → workers -->
-      <circle r="2.5" fill="#00e5ff" opacity="0.7">
-        <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s">
-          <mpath href="#p-cp1-w1"/>
-        </animateMotion>
-      </circle>
-      <path id="p-cp1-w1" d="M380,230 L200,360" fill="none"/>
-      <circle r="2.5" fill="#00e5ff" opacity="0.7">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1s">
-          <mpath href="#p-cp1-w2"/>
-        </animateMotion>
-      </circle>
-      <path id="p-cp1-w2" d="M380,230 L420,360" fill="none"/>
-      <circle r="2.5" fill="#00e5ff" opacity="0.7">
-        <animateMotion dur="1.9s" repeatCount="indefinite" begin="0.7s">
-          <mpath href="#p-cp2-w3"/>
-        </animateMotion>
-      </circle>
-      <path id="p-cp2-w3" d="M580,230 L620,360" fill="none"/>
-      <circle r="2.5" fill="#00e5ff" opacity="0.7">
-        <animateMotion dur="2.1s" repeatCount="indefinite" begin="1.3s">
-          <mpath href="#p-cp3-w4"/>
-        </animateMotion>
-      </circle>
-      <path id="p-cp3-w4" d="M780,230 L840,360" fill="none"/>
-
-      <!-- Longhorn replication -->
-      <circle r="2.5" fill="#00ffb3" opacity="0.6">
-        <animateMotion dur="2.8s" repeatCount="indefinite" begin="0.4s">
-          <mpath href="#p-lh12"/>
-        </animateMotion>
-      </circle>
-      <path id="p-lh12" d="M200,380 L420,380" fill="none"/>
-      <circle r="2.5" fill="#00ffb3" opacity="0.6">
-        <animateMotion dur="2.8s" repeatCount="indefinite" begin="1.4s">
-          <mpath href="#p-lh23"/>
-        </animateMotion>
-      </circle>
-      <path id="p-lh23" d="M420,380 L620,380" fill="none"/>
-      <circle r="2.5" fill="#00ffb3" opacity="0.6">
-        <animateMotion dur="2.8s" repeatCount="indefinite" begin="2.1s">
-          <mpath href="#p-lh34"/>
-        </animateMotion>
-      </circle>
-      <path id="p-lh34" d="M620,380 L840,380" fill="none"/>
-
-      <!-- ArgoCD → cluster -->
-      <circle r="3" fill="#ff8c42" opacity="0.9" filter="url(#glow-blue)">
-        <animateMotion dur="2.6s" repeatCount="indefinite" begin="0.6s">
-          <mpath href="#p-argo-cp3"/>
-        </animateMotion>
-      </circle>
-      <path id="p-argo-cp3" d="M1060,80 L780,200" fill="none"/>
-
-      <!-- Zone labels -->
-      <text x="580" y="58" text-anchor="middle" fill="rgba(255,209,102,0.35)" font-family="'Share Tech Mono',monospace" font-size="11" letter-spacing="3">── etcd RAFT CONSENSUS ZONE ──</text>
-      <text x="520" y="310" text-anchor="middle" fill="rgba(50,108,229,0.3)" font-family="'Share Tech Mono',monospace" font-size="10" letter-spacing="2">── CONTROL PLANE (HA) ──</text>
-      <text x="520" y="470" text-anchor="middle" fill="rgba(0,229,255,0.2)" font-family="'Share Tech Mono',monospace" font-size="10" letter-spacing="2">── DATA PLANE // WORKER NODES ──</text>
-    </svg>
-
-    <!-- NODES -->
-
-    <!-- kubectl client -->
-    <div class="node" style="left:6.9%;top:80px">
-      <div class="node-hex internet" style="width:50px;height:50px;font-size:1rem">💻</div>
-      <div class="node-lbl">kubectl</div>
-      <div class="node-sub">Client CLI</div>
-      <div class="tooltip">
-        <div class="tooltip-title">kubectl</div>
-        <div class="tooltip-desc">Interface CLI officielle de Kubernetes. Envoie des commandes à l'API Server via HTTPS.</div>
-        <span class="tooltip-tag">client</span>
-      </div>
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="hero-badge"><div class="hero-badge-dot"></div> Kubernetes v1.31 · Production HA</div>
+    <h1 class="hero-title">
+      Cluster <span class="hl-cyan">Kubernetes</span><br>
+      <span class="hl-k8s">Haute Disponibilité</span><br>
+      <span class="hl-green">Guide Complet</span>
+    </h1>
+    <p class="hero-sub">3 Control Planes · 4 Workers · Longhorn CSI · ArgoCD GitOps<br>Architecture de production, explications pédagogiques, commandes réelles.</p>
+    <div class="hero-stats">
+      <div class="hstat"><span class="hstat-val">7</span><div class="hstat-lbl">Nodes</div></div>
+      <div class="hstat"><span class="hstat-val">3</span><div class="hstat-lbl">Control Planes</div></div>
+      <div class="hstat"><span class="hstat-val">4</span><div class="hstat-lbl">Workers</div></div>
+      <div class="hstat"><span class="hstat-val">∞</span><div class="hstat-lbl">Tolérance pannes</div></div>
     </div>
-
-    <!-- etcd nodes -->
-    <div class="node" style="left:25.9%;top:135px">
-      <div class="node-hex etcd">🗄</div>
-      <div class="node-lbl">etcd-1</div>
-      <div class="node-sub">leader</div>
-      <div class="tooltip">
-        <div class="tooltip-title">etcd</div>
-        <div class="tooltip-desc">Base de données clé-valeur distribuée. Stocke TOUT l'état du cluster. Protocole Raft pour le consensus entre les 3 instances.</div>
-        <span class="tooltip-tag">stateful</span><span class="tooltip-tag" style="margin-left:4px">raft</span>
+    <div class="hero-terminal">
+      <div class="term-bar">
+        <div class="term-dots"><div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div></div>
+        <div class="term-title">root@control-plane-1 ~ bash</div>
       </div>
-    </div>
-    <div class="node" style="left:39.7%;top:135px">
-      <div class="node-hex etcd">🗄</div>
-      <div class="node-lbl">etcd-2</div>
-      <div class="node-sub">follower</div>
-      <div class="tooltip">
-        <div class="tooltip-title">etcd</div>
-        <div class="tooltip-desc">Réplique de l'état. Peut devenir leader si le leader tombe. Quorum = 2 sur 3 instances minimum.</div>
-        <span class="tooltip-tag">follower</span>
-      </div>
-    </div>
-    <div class="node" style="left:53.4%;top:135px">
-      <div class="node-hex etcd">🗄</div>
-      <div class="node-lbl">etcd-3</div>
-      <div class="node-sub">follower</div>
-      <div class="tooltip">
-        <div class="tooltip-title">etcd — Quorum</div>
-        <div class="tooltip-desc">Avec 3 nœuds, le cluster tolère 1 panne. Avec 5 nœuds, il tolèrerait 2 pannes. Toujours un nombre impair !</div>
-        <span class="tooltip-tag">fault-tolerant</span>
-      </div>
-    </div>
-
-    <!-- Control Planes -->
-    <div class="node" style="left:32.8%;top:200px">
-      <div class="node-hex cp">⚙️</div>
-      <div class="node-badge ready"></div>
-      <div class="node-lbl">control-plane-1</div>
-      <div class="node-sub">API Server · Scheduler</div>
-      <div class="tooltip">
-        <div class="tooltip-title">Control Plane</div>
-        <div class="tooltip-desc">Fait tourner : kube-apiserver, kube-scheduler, kube-controller-manager. Le cerveau du cluster.</div>
-        <span class="tooltip-tag">master</span>
-      </div>
-    </div>
-    <div class="node" style="left:50%;top:200px">
-      <div class="node-hex cp">⚙️</div>
-      <div class="node-badge ready"></div>
-      <div class="node-lbl">control-plane-2</div>
-      <div class="node-sub">API Server · CtrlMgr</div>
-      <div class="tooltip">
-        <div class="tooltip-title">Haute Disponibilité</div>
-        <div class="tooltip-desc">3 control planes derrière un load balancer. Si l'un tombe, les autres continuent. Aucune interruption de service.</div>
-        <span class="tooltip-tag">HA</span>
-      </div>
-    </div>
-    <div class="node" style="left:67.2%;top:200px">
-      <div class="node-hex cp">⚙️</div>
-      <div class="node-badge ready"></div>
-      <div class="node-lbl">control-plane-3</div>
-      <div class="node-sub">API Server · Scheduler</div>
-      <div class="tooltip">
-        <div class="tooltip-title">kube-scheduler</div>
-        <div class="tooltip-desc">Décide sur quel worker placer chaque pod en fonction des ressources disponibles, affinités et contraintes.</div>
-        <span class="tooltip-tag">scheduling</span>
-      </div>
-    </div>
-
-    <!-- Workers -->
-    <div class="node" style="left:17.2%;top:380px">
-      <div class="node-hex worker">🖥</div>
-      <div class="node-badge run"></div>
-      <div class="node-lbl">worker-1</div>
-      <div class="node-sub">kubelet · kube-proxy</div>
-      <div class="tooltip">
-        <div class="tooltip-title">Worker Node</div>
-        <div class="tooltip-desc">Fait tourner les pods applicatifs. kubelet gère les containers, kube-proxy gère le réseau (iptables/eBPF).</div>
-        <span class="tooltip-tag">data plane</span>
-      </div>
-    </div>
-    <div class="node" style="left:36.2%;top:380px">
-      <div class="node-hex worker">🖥</div>
-      <div class="node-badge run"></div>
-      <div class="node-lbl">worker-2</div>
-      <div class="node-sub">kubelet · Longhorn Mgr</div>
-      <div class="tooltip">
-        <div class="tooltip-title">Longhorn Manager</div>
-        <div class="tooltip-desc">Worker qui héberge le Longhorn Manager pod. Orchestre la création et la réplication des volumes persistants.</div>
-        <span class="tooltip-tag">storage</span>
-      </div>
-    </div>
-    <div class="node" style="left:53.4%;top:380px">
-      <div class="node-hex worker">🖥</div>
-      <div class="node-badge run"></div>
-      <div class="node-lbl">worker-3</div>
-      <div class="node-sub">kubelet · kube-proxy</div>
-      <div class="tooltip">
-        <div class="tooltip-title">Kubelet</div>
-        <div class="tooltip-desc">Agent qui tourne sur chaque node. Reçoit les PodSpecs depuis l'API Server et s'assure que les containers tournent correctement.</div>
-        <span class="tooltip-tag">agent</span>
-      </div>
-    </div>
-    <div class="node" style="left:72.4%;top:380px">
-      <div class="node-hex worker">🖥</div>
-      <div class="node-badge run"></div>
-      <div class="node-lbl">worker-4</div>
-      <div class="node-sub">kubelet · ArgoCD Agent</div>
-      <div class="tooltip">
-        <div class="tooltip-title">ArgoCD App Controller</div>
-        <div class="tooltip-desc">L'agent ArgoCD surveille en continu l'état réel du cluster vs l'état désiré dans Git. Reconcile automatiquement.</div>
-        <span class="tooltip-tag">GitOps</span>
-      </div>
-    </div>
-
-    <!-- Longhorn icon -->
-    <div class="node" style="left:36.2%;top:440px">
-      <div class="node-hex longhorn" style="font-size:1rem">💾</div>
-      <div class="node-lbl">Longhorn CSI</div>
-      <div class="node-sub">Réplication ×3</div>
-      <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
-        <div class="tooltip-title">Longhorn</div>
-        <div class="tooltip-desc">Stockage distribué natif K8s. Chaque volume est répliqué sur N workers. Snapshots, backup S3, UI intégrée.</div>
-        <span class="tooltip-tag">CSI</span><span class="tooltip-tag" style="margin-left:4px">replicated</span>
-      </div>
-    </div>
-
-    <!-- ArgoCD external -->
-    <div class="node" style="left:91.4%;top:80px">
-      <div class="node-hex argo" style="font-size:1rem">🐙</div>
-      <div class="node-badge run"></div>
-      <div class="node-lbl">ArgoCD</div>
-      <div class="node-sub">GitOps Controller</div>
-      <div class="tooltip">
-        <div class="tooltip-title">ArgoCD — GitOps</div>
-        <div class="tooltip-desc">Synchronise le cluster avec un dépôt Git. Le dépôt = source de vérité. Tout changement passe par un commit.</div>
-        <span class="tooltip-tag">GitOps</span>
-      </div>
-    </div>
-
-    <!-- Git repo -->
-    <div class="node" style="left:93%;top:360px">
-      <div class="node-hex" style="background:rgba(179,136,255,0.08);border:2px solid var(--purple);box-shadow:0 0 12px rgba(179,136,255,0.2);width:50px;height:50px;font-size:1rem">📦</div>
-      <div class="node-lbl">Git Repo</div>
-      <div class="node-sub">Source of Truth</div>
-      <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
-        <div class="tooltip-title">Source of Truth</div>
-        <div class="tooltip-desc">Le dépôt Git contient tous les manifests YAML (Deployments, Services, Ingress…). ArgoCD les applique automatiquement.</div>
-        <span class="tooltip-tag">manifest</span>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Legend -->
-  <div class="legend">
-    <div class="leg-item"><div class="leg-dot" style="background:var(--k8s)"></div> Control Plane</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--cyan)"></div> Worker Node</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div> etcd (Raft)</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div> Longhorn replication</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div> ArgoCD GitOps</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--cyan)"></div> API Server → kubelet</div>
-    <div class="leg-item" style="margin-left:auto;font-style:italic;color:#1a3a5a">💡 Hover sur un nœud pour les détails</div>
-  </div>
-</div>
-
-<!-- BOTTOM GRID -->
-<div class="bottom-grid">
-
-  <!-- Nodes status -->
-  <div class="panel">
-    <div class="panel-title">ÉTAT DES NŒUDS</div>
-
-    <div class="node-row">
-      <div class="dot ready"></div>
-      <div class="nr-name">control-plane-1</div>
-      <span class="nr-role cp">CP</span>
-      <div style="width:60px">
-        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 18%</div>
-        <div class="bar-wrap"><div class="bar-fill blue" style="width:18%"></div></div>
-      </div>
-    </div>
-    <div class="node-row">
-      <div class="dot ready"></div>
-      <div class="nr-name">control-plane-2</div>
-      <span class="nr-role cp">CP</span>
-      <div style="width:60px">
-        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 14%</div>
-        <div class="bar-wrap"><div class="bar-fill blue" style="width:14%"></div></div>
-      </div>
-    </div>
-    <div class="node-row">
-      <div class="dot ready"></div>
-      <div class="nr-name">control-plane-3</div>
-      <span class="nr-role cp">CP</span>
-      <div style="width:60px">
-        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 16%</div>
-        <div class="bar-wrap"><div class="bar-fill blue" style="width:16%"></div></div>
-      </div>
-    </div>
-    <div class="node-row">
-      <div class="dot run"></div>
-      <div class="nr-name">worker-1</div>
-      <span class="nr-role wk">WK</span>
-      <div style="width:60px">
-        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 61%</div>
-        <div class="bar-wrap"><div class="bar-fill cyan" style="width:61%"></div></div>
-      </div>
-    </div>
-    <div class="node-row">
-      <div class="dot run"></div>
-      <div class="nr-name">worker-2</div>
-      <span class="nr-role wk">WK</span>
-      <div style="width:60px">
-        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 74%</div>
-        <div class="bar-wrap"><div class="bar-fill cyan" style="width:74%"></div></div>
-      </div>
-    </div>
-    <div class="node-row">
-      <div class="dot run"></div>
-      <div class="nr-name">worker-3</div>
-      <span class="nr-role wk">WK</span>
-      <div style="width:60px">
-        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 48%</div>
-        <div class="bar-wrap"><div class="bar-fill cyan" style="width:48%"></div></div>
-      </div>
-    </div>
-    <div class="node-row">
-      <div class="dot run"></div>
-      <div class="nr-name">worker-4</div>
-      <span class="nr-role wk">WK</span>
-      <div style="width:60px">
-        <div style="font-size:0.55rem;color:var(--text);text-align:right">CPU 55%</div>
-        <div class="bar-wrap"><div class="bar-fill cyan" style="width:55%"></div></div>
-      </div>
+      <div class="term-body" id="termBody"></div>
     </div>
   </div>
+</section>
 
-  <!-- Longhorn volumes -->
-  <div class="panel">
-    <div class="panel-title">LONGHORN — VOLUMES PERSISTANTS</div>
-    <div style="font-size:0.6rem;color:var(--text);margin-bottom:12px;line-height:1.6;">
-      Longhorn découpe les volumes en <span style="color:var(--green)">replicas</span> distribués sur les workers. Même si un node tombe, les données restent accessibles.
-    </div>
-    <div class="vol-grid">
-      <div class="vol-item">
-        <div class="vol-name">postgres-data</div>
-        <div class="vol-size">20 Gi · RWO</div>
-        <div class="vol-rep">✓ replicas ×3</div>
-        <div class="vol-bar"><div class="vol-bar-fill" style="width:42%"></div></div>
-      </div>
-      <div class="vol-item">
-        <div class="vol-name">prometheus-tsdb</div>
-        <div class="vol-size">50 Gi · RWO</div>
-        <div class="vol-rep">✓ replicas ×3</div>
-        <div class="vol-bar"><div class="vol-bar-fill" style="width:68%"></div></div>
-      </div>
-      <div class="vol-item">
-        <div class="vol-name">loki-chunks</div>
-        <div class="vol-size">100 Gi · RWO</div>
-        <div class="vol-rep">✓ replicas ×2</div>
-        <div class="vol-bar"><div class="vol-bar-fill" style="width:31%"></div></div>
-      </div>
-      <div class="vol-item">
-        <div class="vol-name">minio-data</div>
-        <div class="vol-size">200 Gi · RWX</div>
-        <div class="vol-rep">✓ replicas ×3</div>
-        <div class="vol-bar"><div class="vol-bar-fill" style="width:55%"></div></div>
-      </div>
-    </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:0.58rem;color:var(--text);line-height:1.6;">
-      <span style="color:var(--green)">RWO</span> = ReadWriteOnce (1 node) · <span style="color:var(--cyan)">RWX</span> = ReadWriteMany (tous les nodes)<br>
-      Interface Longhorn dispo sur <span style="color:var(--orange)">:8080/longhorn</span> via NodePort
-    </div>
+<!-- TOPOLOGY -->
+<section id="topology">
+<div class="container">
+  <div class="section-header" style="margin-bottom:2rem;">
+    <span class="sec-tag">Architecture</span>
+    <h2 class="sec-title">Topologie du Cluster</h2>
+    <p class="sec-desc">Vue en temps réel des flux de communication entre les composants. Survolez un nœud pour les détails.</p>
   </div>
 
-  <!-- ArgoCD apps -->
-  <div class="panel">
-    <div class="panel-title">ARGOCD — APPLICATIONS GITOPS</div>
-    <div style="font-size:0.6rem;color:var(--text);margin-bottom:12px;line-height:1.6;">
-      ArgoCD synchronise en continu le cluster avec le dépôt Git. <span style="color:var(--orange)">Git = source de vérité.</span>
-    </div>
-    <div class="argo-app">
-      <div class="argo-sync synced">SYNCED</div>
-      <div>
-        <div class="argo-name">monitoring-stack</div>
-        <div class="argo-env">Prometheus · Grafana · Alertmanager</div>
+  <div class="panel topo-wrap">
+    <div class="panel-title">TOPOLOGIE — FLUX DE COMMUNICATION EN DIRECT</div>
+    <div class="topo-inner" id="topo">
+
+      <svg class="topo-svg" viewBox="0 0 1160 480" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="gb"><feGaussianBlur stdDeviation="2.5" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+          <filter id="gc"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+        </defs>
+
+        <!-- etcd zone -->
+        <ellipse cx="580" cy="165" rx="295" ry="110" fill="none" stroke="rgba(255,209,102,0.06)" stroke-width="1.5" stroke-dasharray="8 5"/>
+        <text x="580" y="52" text-anchor="middle" fill="rgba(255,209,102,0.3)" font-family="'JetBrains Mono',monospace" font-size="11" letter-spacing="3">── etcd RAFT CONSENSUS ──</text>
+
+        <!-- etcd sync -->
+        <line x1="300" y1="130" x2="460" y2="130" stroke="rgba(255,209,102,0.18)" stroke-width="1" stroke-dasharray="3 5"/>
+        <line x1="460" y1="130" x2="620" y2="130" stroke="rgba(255,209,102,0.18)" stroke-width="1" stroke-dasharray="3 5"/>
+        <line x1="300" y1="130" x2="620" y2="130" stroke="rgba(255,209,102,0.1)" stroke-width="1" stroke-dasharray="3 6"/>
+
+        <!-- VIP → CPs -->
+        <line x1="80" y1="75" x2="380" y2="195" stroke="rgba(179,136,255,0.2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <line x1="80" y1="75" x2="580" y2="195" stroke="rgba(179,136,255,0.15)" stroke-width="1" stroke-dasharray="5 4"/>
+        <line x1="80" y1="75" x2="780" y2="195" stroke="rgba(179,136,255,0.12)" stroke-width="1" stroke-dasharray="5 5"/>
+
+        <!-- CP ↔ CP HA -->
+        <line x1="380" y1="197" x2="580" y2="197" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <line x1="580" y1="197" x2="780" y2="197" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <line x1="380" y1="197" x2="780" y2="197" stroke="rgba(50,108,229,0.1)" stroke-width="1" stroke-dasharray="4 6"/>
+
+        <!-- CP → Workers -->
+        <line x1="380" y1="225" x2="200" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="380" y1="225" x2="415" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="580" y1="225" x2="615" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="780" y1="225" x2="840" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+
+        <!-- Longhorn replication -->
+        <line x1="200" y1="378" x2="415" y2="378" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
+        <line x1="415" y1="378" x2="615" y2="378" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
+        <line x1="615" y1="378" x2="840" y2="378" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
+
+        <!-- ArgoCD → cp3 / Git -->
+        <line x1="1060" y1="75" x2="780" y2="197" stroke="rgba(255,140,66,0.2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <line x1="1060" y1="75" x2="1080" y2="358" stroke="rgba(255,140,66,0.15)" stroke-width="1" stroke-dasharray="5 4"/>
+
+        <!-- Zone labels -->
+        <text x="520" y="305" text-anchor="middle" fill="rgba(50,108,229,0.25)" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="2">── CONTROL PLANE (HA) ──</text>
+        <text x="520" y="468" text-anchor="middle" fill="rgba(0,229,255,0.2)" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="2">── DATA PLANE // WORKER NODES ──</text>
+
+        <!-- ─ PACKETS ─ -->
+        <!-- VIP → cp1 -->
+        <circle r="3.5" fill="#b388ff" filter="url(#gc)"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#pvc1"/></animateMotion></circle>
+        <path id="pvc1" d="M80,75 L380,195" fill="none"/>
+        <circle r="3" fill="#b388ff" opacity=".6"><animateMotion dur="2s" repeatCount="indefinite" begin="1s"><mpath href="#pvc2"/></animateMotion></circle>
+        <path id="pvc2" d="M80,75 L580,195" fill="none"/>
+
+        <!-- cp1→cp2 sync -->
+        <circle r="3" fill="#326CE5" filter="url(#gb)"><animateMotion dur="1.8s" repeatCount="indefinite" begin=".3s"><mpath href="#pc1c2"/></animateMotion></circle>
+        <path id="pc1c2" d="M380,197 L580,197" fill="none"/>
+        <circle r="3" fill="#326CE5" filter="url(#gb)"><animateMotion dur="1.8s" repeatCount="indefinite" begin=".9s"><mpath href="#pc2c3"/></animateMotion></circle>
+        <path id="pc2c3" d="M580,197 L780,197" fill="none"/>
+
+        <!-- etcd sync -->
+        <circle r="2.5" fill="#ffd166" opacity=".8"><animateMotion dur="1.5s" repeatCount="indefinite" begin=".2s"><mpath href="#pe12"/></animateMotion></circle>
+        <path id="pe12" d="M300,130 L460,130" fill="none"/>
+        <circle r="2.5" fill="#ffd166" opacity=".8"><animateMotion dur="1.5s" repeatCount="indefinite" begin=".9s"><mpath href="#pe23"/></animateMotion></circle>
+        <path id="pe23" d="M460,130 L620,130" fill="none"/>
+
+        <!-- CP → workers -->
+        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="2s" repeatCount="indefinite" begin=".5s"><mpath href="#pcw1"/></animateMotion></circle>
+        <path id="pcw1" d="M380,225 L200,358" fill="none"/>
+        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="2.2s" repeatCount="indefinite" begin="1.1s"><mpath href="#pcw2"/></animateMotion></circle>
+        <path id="pcw2" d="M380,225 L415,358" fill="none"/>
+        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="1.9s" repeatCount="indefinite" begin=".7s"><mpath href="#pcw3"/></animateMotion></circle>
+        <path id="pcw3" d="M580,225 L615,358" fill="none"/>
+        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="2.1s" repeatCount="indefinite" begin="1.4s"><mpath href="#pcw4"/></animateMotion></circle>
+        <path id="pcw4" d="M780,225 L840,358" fill="none"/>
+
+        <!-- Longhorn replication -->
+        <circle r="2.5" fill="#00ffb3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin=".4s"><mpath href="#plh12"/></animateMotion></circle>
+        <path id="plh12" d="M200,378 L415,378" fill="none"/>
+        <circle r="2.5" fill="#00ffb3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin="1.4s"><mpath href="#plh23"/></animateMotion></circle>
+        <path id="plh23" d="M415,378 L615,378" fill="none"/>
+        <circle r="2.5" fill="#00ffb3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin="2.2s"><mpath href="#plh34"/></animateMotion></circle>
+        <path id="plh34" d="M615,378 L840,378" fill="none"/>
+
+        <!-- ArgoCD GitOps -->
+        <circle r="3" fill="#ff8c42" opacity=".9" filter="url(#gb)"><animateMotion dur="2.6s" repeatCount="indefinite" begin=".6s"><mpath href="#pag"/></animateMotion></circle>
+        <path id="pag" d="M1060,75 L780,197" fill="none"/>
+      </svg>
+
+      <!-- VIP/HAProxy -->
+      <div class="node" style="left:6.9%;top:75px">
+        <div class="node-hex vip" style="font-size:1.1rem">⚖️</div>
+        <div class="node-lbl">HAProxy · VIP</div>
+        <div class="node-sub">192.168.1.100:6443</div>
+        <div class="tooltip">
+          <div class="tt-title">Load Balancer VIP</div>
+          <div class="tt-desc">HAProxy répartit le trafic sur les 3 API Servers. Keepalived gère l'IP virtuelle (VRRP). Point d'entrée unique du cluster.</div>
+          <span class="tt-tag">haproxy</span><span class="tt-tag">keepalived</span>
+        </div>
       </div>
-    </div>
-    <div class="argo-app">
-      <div class="argo-sync synced">SYNCED</div>
-      <div>
-        <div class="argo-name">ingress-nginx</div>
-        <div class="argo-env">Ingress Controller · Cert-Manager</div>
+
+      <!-- etcd -->
+      <div class="node" style="left:25.9%;top:130px">
+        <div class="node-hex etcd">🗄</div>
+        <div class="node-lbl">etcd-1</div><div class="node-sub">leader</div>
+        <div class="tooltip"><div class="tt-title">etcd — Leader</div><div class="tt-desc">Base de données clé-valeur distribuée. Protocole Raft. Stocke tout l'état du cluster. Leader actif.</div><span class="tt-tag">raft</span><span class="tt-tag">stateful</span></div>
       </div>
-    </div>
-    <div class="argo-app">
-      <div class="argo-sync oos">OUT OF SYNC</div>
-      <div>
-        <div class="argo-name">app-backend</div>
-        <div class="argo-env">Pending deploy → v2.4.1</div>
+      <div class="node" style="left:39.7%;top:130px">
+        <div class="node-hex etcd">🗄</div>
+        <div class="node-lbl">etcd-2</div><div class="node-sub">follower</div>
+        <div class="tooltip"><div class="tt-title">etcd — Follower</div><div class="tt-desc">Réplique l'état du leader. Peut devenir leader si celui-ci tombe. Quorum = 2/3 minimum.</div><span class="tt-tag">follower</span></div>
       </div>
+      <div class="node" style="left:53.4%;top:130px">
+        <div class="node-hex etcd">🗄</div>
+        <div class="node-lbl">etcd-3</div><div class="node-sub">follower</div>
+        <div class="tooltip"><div class="tt-title">etcd — Quorum</div><div class="tt-desc">3 nœuds = tolérance à 1 panne. Toujours un nombre impair ! 5 nœuds tolèrerait 2 pannes.</div><span class="tt-tag">fault-tolerant</span></div>
+      </div>
+
+      <!-- Control Planes -->
+      <div class="node" style="left:32.8%;top:200px">
+        <div class="node-hex cp">⚙️</div><div class="nbadge ready"></div>
+        <div class="node-lbl">control-plane-1</div><div class="node-sub">.101 · API · Scheduler</div>
+        <div class="tooltip"><div class="tt-title">Control Plane #1</div><div class="tt-desc">Héberge kube-apiserver, kube-scheduler, kube-controller-manager et etcd. Cerveau du cluster.</div><span class="tt-tag">master</span><span class="tt-tag">192.168.1.101</span></div>
+      </div>
+      <div class="node" style="left:50%;top:200px">
+        <div class="node-hex cp">⚙️</div><div class="nbadge ready"></div>
+        <div class="node-lbl">control-plane-2</div><div class="node-sub">.102 · API · CtrlMgr</div>
+        <div class="tooltip"><div class="tt-title">Control Plane #2 — HA</div><div class="tt-desc">3 CPs derrière HAProxy = aucune interruption si l'un tombe. Leader election automatique.</div><span class="tt-tag">HA</span><span class="tt-tag">192.168.1.102</span></div>
+      </div>
+      <div class="node" style="left:67.2%;top:200px">
+        <div class="node-hex cp">⚙️</div><div class="nbadge ready"></div>
+        <div class="node-lbl">control-plane-3</div><div class="node-sub">.103 · API · Scheduler</div>
+        <div class="tooltip"><div class="tt-title">Control Plane #3</div><div class="tt-desc">Garantit le quorum etcd. kube-scheduler place les pods sur les workers selon CPU, RAM, affinités.</div><span class="tt-tag">scheduling</span><span class="tt-tag">192.168.1.103</span></div>
+      </div>
+
+      <!-- Workers -->
+      <div class="node" style="left:17.2%;top:378px">
+        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-lbl">worker-1</div><div class="node-sub">.111 · kubelet · LH</div>
+        <div class="tooltip"><div class="tt-title">Worker Node #1</div><div class="tt-desc">Exécute les pods applicatifs. kubelet gère les containers via containerd. Longhorn Engine pour le stockage.</div><span class="tt-tag">data plane</span><span class="tt-tag">192.168.1.111</span></div>
+      </div>
+      <div class="node" style="left:35.8%;top:378px">
+        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-lbl">worker-2</div><div class="node-sub">.112 · LH Manager</div>
+        <div class="tooltip"><div class="tt-title">Worker #2 — Longhorn Mgr</div><div class="tt-desc">Héberge le Longhorn Manager. Orchestre la création et réplication des volumes persistants sur tous les workers.</div><span class="tt-tag">storage</span><span class="tt-tag">192.168.1.112</span></div>
+      </div>
+      <div class="node" style="left:53%;top:378px">
+        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-lbl">worker-3</div><div class="node-sub">.113 · kubelet · LH</div>
+        <div class="tooltip"><div class="tt-title">Worker Node #3</div><div class="tt-desc">Réplique Longhorn. Si worker-1 tombe, les volumes restent accessibles via les réplicas sur w2/w3/w4.</div><span class="tt-tag">resilience</span><span class="tt-tag">192.168.1.113</span></div>
+      </div>
+      <div class="node" style="left:72.4%;top:378px">
+        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-lbl">worker-4</div><div class="node-sub">.114 · ArgoCD Agent</div>
+        <div class="tooltip"><div class="tt-title">Worker #4 — ArgoCD</div><div class="tt-desc">Héberge l'ArgoCD Application Controller. Surveille le diff Git↔cluster et reconcile automatiquement.</div><span class="tt-tag">GitOps</span><span class="tt-tag">192.168.1.114</span></div>
+      </div>
+
+      <!-- Longhorn -->
+      <div class="node" style="left:35.8%;top:445px">
+        <div class="node-hex lh" style="font-size:1rem">💾</div>
+        <div class="node-lbl">Longhorn CSI</div><div class="node-sub">Réplication ×3</div>
+        <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
+          <div class="tt-title">Longhorn Distributed Storage</div>
+          <div class="tt-desc">CSI driver natif K8s. Chaque volume répliqué sur 3 workers. Snapshots, backup S3, interface UI.</div>
+          <span class="tt-tag">CSI</span><span class="tt-tag">replicated</span>
+        </div>
+      </div>
+
+      <!-- ArgoCD -->
+      <div class="node" style="left:91.4%;top:75px">
+        <div class="node-hex argo" style="font-size:1rem">🐙</div><div class="nbadge run"></div>
+        <div class="node-lbl">ArgoCD</div><div class="node-sub">GitOps Controller</div>
+        <div class="tooltip"><div class="tt-title">ArgoCD — GitOps</div><div class="tt-desc">Synchronise le cluster avec Git. Le dépôt = source de vérité. Tout changement passe par un commit.</div><span class="tt-tag">GitOps</span><span class="tt-tag">declarative</span></div>
+      </div>
+      <!-- Git Repo -->
+      <div class="node" style="left:93%;top:358px">
+        <div class="node-hex" style="background:rgba(179,136,255,.08);border:2px solid var(--purple);width:50px;height:50px;font-size:1rem">📦</div>
+        <div class="node-lbl">Git Repo</div><div class="node-sub">Source of Truth</div>
+        <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
+          <div class="tt-title">Source of Truth</div>
+          <div class="tt-desc">Tous les manifests YAML (Deployments, Services, Ingress…). ArgoCD les applique automatiquement à chaque commit.</div>
+          <span class="tt-tag">manifest</span><span class="tt-tag">IaC</span>
+        </div>
+      </div>
+
+    </div><!-- /topo-inner -->
+
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:var(--k8s)"></div>Control Plane</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--cyan)"></div>Worker Node</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--yellow)"></div>etcd Raft</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Longhorn CSI</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div>ArgoCD GitOps</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div>HAProxy VIP</div>
+      <div class="leg" style="margin-left:auto;font-style:italic;color:#1a3a5a">💡 Hover sur un nœud pour les détails</div>
     </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
-      <div class="concept" style="padding:6px 0;border:none;">
-        <div class="concept-icon" style="font-size:0.9rem">🔄</div>
-        <div>
-          <div class="concept-title">Flux GitOps</div>
-          <div class="concept-desc">commit → push → ArgoCD détecte le diff → applique automatiquement → cluster à jour</div>
+  </div><!-- /panel -->
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom-grid" style="margin-top:0;">
+    <div class="panel">
+      <div class="panel-title">ÉTAT DES NŒUDS</div>
+      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-1</div><span class="nr-role cp">CP</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 18%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:18%"></div></div></div></div>
+      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-2</div><span class="nr-role cp">CP</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 14%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:14%"></div></div></div></div>
+      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-3</div><span class="nr-role cp">CP</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 16%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:16%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-1</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 61%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:61%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-2</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 74%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:74%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-3</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 48%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:48%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-4</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 55%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:55%"></div></div></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">LONGHORN — VOLUMES PERSISTANTS</div>
+      <p style="font-family:var(--mono);font-size:.62rem;color:var(--text);margin-bottom:12px;line-height:1.6;">Réplication des blocs sur les workers. Panne d'un node → données toujours accessibles via les réplicas.</p>
+      <div class="vol-grid">
+        <div class="vol-item"><div class="vol-name">postgres-data</div><div class="vol-size">20 Gi · RWO</div><div class="vol-rep">✓ replicas ×3</div><div class="vol-bar"><div class="vol-bar-fill" style="width:42%"></div></div></div>
+        <div class="vol-item"><div class="vol-name">prometheus-tsdb</div><div class="vol-size">50 Gi · RWO</div><div class="vol-rep">✓ replicas ×3</div><div class="vol-bar"><div class="vol-bar-fill" style="width:68%"></div></div></div>
+        <div class="vol-item"><div class="vol-name">loki-chunks</div><div class="vol-size">100 Gi · RWO</div><div class="vol-rep">✓ replicas ×2</div><div class="vol-bar"><div class="vol-bar-fill" style="width:31%"></div></div></div>
+        <div class="vol-item"><div class="vol-name">minio-data</div><div class="vol-size">200 Gi · RWX</div><div class="vol-rep">✓ replicas ×3</div><div class="vol-bar"><div class="vol-bar-fill" style="width:55%"></div></div></div>
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.57rem;color:var(--text);line-height:1.6;"><span style="color:var(--green)">RWO</span> = ReadWriteOnce · <span style="color:var(--cyan)">RWX</span> = ReadWriteMany<br>UI Longhorn → <span style="color:var(--orange)">NodePort :30080</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">ARGOCD — GITOPS APPLICATIONS</div>
+      <p style="font-family:var(--mono);font-size:.62rem;color:var(--text);margin-bottom:12px;line-height:1.6;"><span style="color:var(--orange)">Git = source de vérité.</span> ArgoCD reconcile en continu l'état réel vs désiré.</p>
+      <div class="argo-app"><div class="argo-sync synced">SYNCED</div><div><div class="argo-name">monitoring-stack</div><div class="argo-env">Prometheus · Grafana · Alertmanager</div></div></div>
+      <div class="argo-app"><div class="argo-sync synced">SYNCED</div><div><div class="argo-name">ingress-nginx</div><div class="argo-env">Ingress Controller · Cert-Manager</div></div></div>
+      <div class="argo-app"><div class="argo-sync oos">OUT OF SYNC</div><div><div class="argo-name">app-backend</div><div class="argo-env">Pending deploy → v2.4.1</div></div></div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+        <div class="concept" style="padding:5px 0;border:none;">
+          <div class="concept-icon" style="font-size:.9rem">🔄</div>
+          <div><div class="concept-title">Flux GitOps</div><div class="concept-desc">commit → push → ArgoCD détecte diff → applique → cluster à jour</div></div>
         </div>
       </div>
     </div>
   </div>
-
 </div>
+</section>
 
-<!-- CONCEPTS ROW -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+<!-- COMPOSANTS -->
+<section id="composants">
+<div class="container">
+  <span class="sec-tag">Composants</span>
+  <h2 class="sec-title">Anatomie du Cluster</h2>
+  <p class="sec-desc" style="margin-bottom:3rem;">Chaque composant a un rôle précis. Comprendre leur interaction est essentiel pour opérer un cluster en production.</p>
 
-  <div class="panel">
-    <div class="panel-title">COMPOSANTS CONTROL PLANE</div>
-    <div class="concept">
-      <div class="concept-icon">🔌</div>
-      <div>
-        <div class="concept-title">kube-apiserver</div>
-        <div class="concept-desc">Point d'entrée unique. Valide et persiste tous les objets dans etcd. Expose l'API REST de Kubernetes.</div>
-      </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="panel">
+      <div class="panel-title">COMPOSANTS CONTROL PLANE</div>
+      <div class="concept"><div class="concept-icon">🔌</div><div><div class="concept-title">kube-apiserver</div><div class="concept-desc">Point d'entrée unique. Valide et persiste TOUS les objets dans etcd. Expose l'API REST. Authentification, autorisation (RBAC), admission controllers.</div></div></div>
+      <div class="concept"><div class="concept-icon">📅</div><div><div class="concept-title">kube-scheduler</div><div class="concept-desc">Surveille les pods Pending et choisit le meilleur worker. Critères : ressources disponibles, affinités, anti-affinités, taints/tolerations, topologie.</div></div></div>
+      <div class="concept"><div class="concept-icon">🔁</div><div><div class="concept-title">kube-controller-manager</div><div class="concept-desc">Boucles de réconciliation : ReplicaSet, Deployment, StatefulSet, Job, Node, Endpoint… État réel → état désiré en permanence.</div></div></div>
+      <div class="concept"><div class="concept-icon">🗄</div><div><div class="concept-title">etcd</div><div class="concept-desc">Base clé-valeur distribuée (protocole Raft). Stocke l'intégralité du cluster. 3 instances = quorum. Sauvegardez-le régulièrement !</div></div></div>
     </div>
-    <div class="concept">
-      <div class="concept-icon">📅</div>
-      <div>
-        <div class="concept-title">kube-scheduler</div>
-        <div class="concept-desc">Surveille les pods sans node assigné et choisit le meilleur worker selon CPU, RAM, affinités, taints/tolerations.</div>
-      </div>
+    <div class="panel">
+      <div class="panel-title">COMPOSANTS WORKER NODE</div>
+      <div class="concept"><div class="concept-icon">🤖</div><div><div class="concept-title">kubelet</div><div class="concept-desc">Agent sur chaque node. Reçoit les PodSpecs depuis l'API Server, pilote containerd/CRI-O, remonte les métriques (cAdvisor). Cœur du data plane.</div></div></div>
+      <div class="concept"><div class="concept-icon">🌐</div><div><div class="concept-title">kube-proxy</div><div class="concept-desc">Implémente les Services via iptables ou eBPF (avec Cilium). Load-balance le trafic entre les pods d'un même Service.</div></div></div>
+      <div class="concept"><div class="concept-icon">📦</div><div><div class="concept-title">containerd</div><div class="concept-desc">Container runtime (CRI). Lance les images OCI. Kubernetes ne parle plus directement à Docker depuis v1.24. containerd = standard de facto.</div></div></div>
+      <div class="concept"><div class="concept-icon">💾</div><div><div class="concept-title">Longhorn CSI Driver</div><div class="concept-desc">Plugin CSI sur chaque node. Monte les volumes Longhorn dans les pods via iSCSI. Réplique les blocs de données de façon transparente.</div></div></div>
     </div>
-    <div class="concept">
-      <div class="concept-icon">🔁</div>
-      <div>
-        <div class="concept-title">controller-manager</div>
-        <div class="concept-desc">Boucles de réconciliation : ReplicaSet, Deployment, Node, Job… S'assure que l'état réel = état désiré.</div>
-      </div>
+    <div class="panel">
+      <div class="panel-title">LONGHORN — STOCKAGE DISTRIBUÉ</div>
+      <div class="concept"><div class="concept-icon">🏗</div><div><div class="concept-title">Architecture</div><div class="concept-desc">Chaque volume = 1 Engine + N Replicas distribués sur les workers. Le CSI driver expose le volume au pod via un device bloc virtuel.</div></div></div>
+      <div class="concept"><div class="concept-icon">🔄</div><div><div class="concept-title">Réplication synchrone</div><div class="concept-desc">Écriture confirmée quand tous les replicas (×3 par défaut) ont acknowledgé. Lecture depuis l'Engine local → latence minimale.</div></div></div>
+      <div class="concept"><div class="concept-icon">📸</div><div><div class="concept-title">Snapshots & Backup</div><div class="concept-desc">Snapshots COW (Copy-on-Write) incrémentaux. Backup vers S3-compatible (MinIO, AWS S3). Restore en 1 clic depuis l'UI.</div></div></div>
+      <div class="concept"><div class="concept-icon">⚡</div><div><div class="concept-title">Failover automatique</div><div class="concept-desc">Si un worker tombe, l'Engine bascule sur un replica disponible en quelques secondes. Le pod peut continuer à écrire sans interruption.</div></div></div>
     </div>
-    <div class="concept">
-      <div class="concept-icon">🗄</div>
-      <div>
-        <div class="concept-title">etcd</div>
-        <div class="concept-desc">Base de données clé-valeur distribuée (Raft). Stocke l'intégralité de l'état du cluster. À sauvegarder absolument !</div>
+    <div class="panel">
+      <div class="panel-title">ARGOCD — GITOPS</div>
+      <div class="concept"><div class="concept-icon">📜</div><div><div class="concept-title">Principe GitOps</div><div class="concept-desc">Git = source de vérité absolue. Toute modification d'infra passe par un commit. Traçabilité complète, rollback = git revert.</div></div></div>
+      <div class="concept"><div class="concept-icon">🔍</div><div><div class="concept-title">Reconciliation loop</div><div class="concept-desc">ArgoCD compare en continu l'état désiré (Git) avec l'état réel (cluster K8s) et applique les diffs automatiquement si sync-policy=automated.</div></div></div>
+      <div class="concept"><div class="concept-icon">🌲</div><div><div class="concept-title">App of Apps pattern</div><div class="concept-desc">Une Application ArgoCD gère d'autres Applications. Déploiement de tout le cluster en 1 commit sur le repo "apps/". Bootstrap instantané.</div></div></div>
+      <div class="concept"><div class="concept-icon">🔐</div><div><div class="concept-title">RBAC & Projects</div><div class="concept-desc">Projects ArgoCD pour isoler les équipes/environnements. RBAC fin sur qui peut sync/delete/override. Intégration SSO (Dex, OIDC).</div></div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- INSTALLATION GUIDE -->
+<section id="install">
+<div class="container">
+  <span class="sec-tag">Guide d'installation</span>
+  <h2 class="sec-title">Déploiement pas à pas</h2>
+  <p class="sec-desc" style="margin-bottom:2.5rem;">Commandes réelles, testées sur Ubuntu 22.04. Adaptez les IPs à votre environnement.</p>
+
+  <div class="install-layout">
+    <div class="install-nav">
+      <div class="install-nav-title">Phases d'installation</div>
+      <ul class="install-nav-list">
+        <li><button class="install-btn active" onclick="showPhase(0,this)"><span class="install-num">1</span>Prérequis système</button></li>
+        <li><button class="install-btn" onclick="showPhase(1,this)"><span class="install-num">2</span>containerd</button></li>
+        <li><button class="install-btn" onclick="showPhase(2,this)"><span class="install-num">3</span>kubeadm · kubectl</button></li>
+        <li><button class="install-btn" onclick="showPhase(3,this)"><span class="install-num">4</span>HAProxy · Keepalived</button></li>
+        <li><button class="install-btn" onclick="showPhase(4,this)"><span class="install-num">5</span>Init Control Plane #1</button></li>
+        <li><button class="install-btn" onclick="showPhase(5,this)"><span class="install-num">6</span>Join CP #2 et #3</button></li>
+        <li><button class="install-btn" onclick="showPhase(6,this)"><span class="install-num">7</span>Join Workers</button></li>
+        <li><button class="install-btn" onclick="showPhase(7,this)"><span class="install-num">8</span>CNI — Calico</button></li>
+        <li><button class="install-btn" onclick="showPhase(8,this)"><span class="install-num">9</span>Longhorn</button></li>
+        <li><button class="install-btn" onclick="showPhase(9,this)"><span class="install-num">10</span>ArgoCD</button></li>
+      </ul>
+    </div>
+
+    <div class="install-phases">
+
+      <!-- PHASE 1 -->
+      <div class="install-phase active" id="phase-0">
+        <div class="phase-h"><h2>Prérequis système</h2><p>À exécuter sur <strong style="color:var(--yellow)">tous les nœuds</strong> (3 CP + 4 workers). Prépare l'OS pour Kubernetes.</p></div>
+        <div class="alert warn">⚠ Adaptez les hostnames et IPs à votre infrastructure avant de copier les commandes.</div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Hostname et /etc/hosts</div></div>
+          <div class="step-desc">Définissez un hostname unique sur chaque machine et remplissez /etc/hosts pour la résolution locale.</div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les nœuds</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="cm"># Sur chaque node, adaptez le hostname</span>
+hostnamectl set-hostname control-plane-1  <span class="cm"># ou worker-1, etc.</span>
+
+<span class="cm"># Remplir /etc/hosts sur TOUS les nodes</span>
+<span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> <span class="cf">&gt;&gt;</span> /etc/hosts
+192.168.1.100  lb.kube.local
+192.168.1.101  control-plane-1
+192.168.1.102  control-plane-2
+192.168.1.103  control-plane-3
+192.168.1.111  worker-1
+192.168.1.112  worker-2
+192.168.1.113  worker-3
+192.168.1.114  worker-4
+EOF</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Désactiver le swap</div></div>
+          <div class="step-desc">Kubernetes exige que le swap soit désactivé. Sinon kubelet refuse de démarrer.</div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les nœuds</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">swapoff -a
+sed -i <span class="cs">'/ swap / s/^\(.*\)$/#\1/g'</span> /etc/fstab
+<span class="cm"># Vérifier</span>
+free -h  <span class="cm"># Swap doit afficher 0</span></div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">3</div><div class="step-title">Modules kernel et sysctl</div></div>
+          <div class="step-desc">overlay et br_netfilter sont requis par containerd et le réseau Kubernetes.</div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les nœuds</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> | tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+modprobe overlay
+modprobe br_netfilter
+
+<span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> | tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+sysctl --system</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">4</div><div class="step-title">Paquets requis</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les nœuds</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">apt-get update && apt-get upgrade -y
+apt-get install -y apt-transport-https ca-certificates curl \
+  gnupg lsb-release software-properties-common</div></div>
+        </div>
+        <div class="phase-nav-btns"><button class="pnav-btn next" onclick="showPhase(1,document.querySelectorAll('.install-btn')[1])">Phase suivante →</button></div>
+      </div>
+
+      <!-- PHASE 2 -->
+      <div class="install-phase" id="phase-1">
+        <div class="phase-h"><h2>Container Runtime — containerd</h2><p>containerd est le runtime standard. Kubernetes lui parle via l'interface CRI (Container Runtime Interface).</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Installer et configurer containerd</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les nœuds</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">apt-get install -y containerd
+
+<span class="cm"># Générer la config par défaut</span>
+mkdir -p /etc/containerd
+containerd config default | tee /etc/containerd/config.toml
+
+<span class="cm"># IMPORTANT : activer SystemdCgroup</span>
+sed -i <span class="cs">'s/SystemdCgroup \= false/SystemdCgroup \= true/g'</span> \
+  /etc/containerd/config.toml
+
+<span class="cm"># Redémarrer et activer</span>
+systemctl restart containerd
+systemctl enable containerd
+
+<span class="cm"># Vérifier</span>
+systemctl status containerd</div></div>
+        </div>
+        <div class="alert info">ℹ SystemdCgroup = true est crucial. Sans ça, kubelet et containerd utilisent des cgroup drivers différents → instabilité du cluster.</div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(0,document.querySelectorAll('.install-btn')[0])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(2,document.querySelectorAll('.install-btn')[2])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 3 -->
+      <div class="install-phase" id="phase-2">
+        <div class="phase-h"><h2>Outils Kubernetes</h2><p>Installer kubeadm, kubelet et kubectl. À faire sur <strong style="color:var(--yellow)">tous les nœuds</strong>.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Ajouter le dépôt Kubernetes</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les nœuds</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | \
+  gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+echo <span class="cs">'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] \
+  https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /'</span> | \
+  tee /etc/apt/sources.list.d/kubernetes.list
+
+apt-get update</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Installer et verrouiller les versions</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les nœuds</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">apt-get install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
+
+systemctl enable kubelet
+
+<span class="cm"># Vérifier</span>
+kubeadm version
+kubectl version --client</div></div>
+        </div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(1,document.querySelectorAll('.install-btn')[1])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(3,document.querySelectorAll('.install-btn')[3])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 4 -->
+      <div class="install-phase" id="phase-3">
+        <div class="phase-h"><h2>HAProxy + Keepalived</h2><p>Configurez un load balancer avec IP virtuelle (VIP) devant les 3 API Servers. Sur un node dédié ou le premier CP.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Installer HAProxy et Keepalived</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">node LB</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">apt-get install -y haproxy keepalived</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Configurer HAProxy</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">/etc/haproxy/haproxy.cfg</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> | tee /etc/haproxy/haproxy.cfg
+global
+    log /dev/log local0
+    maxconn 2000
+    daemon
+
+defaults
+    log     global
+    mode    tcp
+    option  tcplog
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+
+frontend k8s-frontend
+    bind *:6443
+    mode tcp
+    default_backend k8s-backend
+
+backend k8s-backend
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    server cp1 192.168.1.101:6443 check fall 3 rise 2
+    server cp2 192.168.1.102:6443 check fall 3 rise 2
+    server cp3 192.168.1.103:6443 check fall 3 rise 2
+EOF</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">3</div><div class="step-title">Configurer Keepalived (MASTER)</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">/etc/keepalived/keepalived.conf</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> | tee /etc/keepalived/keepalived.conf
+vrrp_script check_haproxy {
+  script "killall -0 haproxy"
+  interval 2
+  weight -2
+}
+vrrp_instance VI_1 {
+  state MASTER
+  interface eth0
+  virtual_router_id 51
+  priority 100
+  authentication {
+    auth_type PASS
+    auth_pass k8s-ha-2024
+  }
+  virtual_ipaddress {
+    192.168.1.100
+  }
+  track_script {
+    check_haproxy
+  }
+}
+EOF
+
+systemctl enable --now haproxy keepalived</div></div>
+        </div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(2,document.querySelectorAll('.install-btn')[2])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(4,document.querySelectorAll('.install-btn')[4])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 5 -->
+      <div class="install-phase" id="phase-4">
+        <div class="phase-h"><h2>Init Control Plane #1</h2><p>À exécuter uniquement sur <strong style="color:var(--yellow)">control-plane-1</strong>. Initialise le cluster et génère les tokens de jonction.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Créer la config kubeadm</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">yaml</span><span class="code-target">kubeadm-config.yaml</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> | tee kubeadm-config.yaml
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v1.31.0
+controlPlaneEndpoint: "192.168.1.100:6443"
+networking:
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+EOF</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Initialiser le cluster</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">kubeadm init --config kubeadm-config.yaml --upload-certs
+
+<span class="cm"># Configurer kubectl</span>
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+<span class="cm"># Vérifier</span>
+kubectl get nodes</div></div>
+        </div>
+        <div class="alert ok">✓ Conservez précieusement les commandes "kubeadm join" affichées en sortie ! Vous en aurez besoin pour les phases 6 et 7.</div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(3,document.querySelectorAll('.install-btn')[3])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(5,document.querySelectorAll('.install-btn')[5])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 6 -->
+      <div class="install-phase" id="phase-5">
+        <div class="phase-h"><h2>Join Control Planes #2 et #3</h2><p>Intégrer les deux autres control planes au cluster pour la haute disponibilité.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Régénérer les tokens si nécessaire</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="cm"># Obtenir le certificate-key</span>
+kubeadm init phase upload-certs --upload-certs
+<span class="cm"># => Certificate key: &lt;CERT_KEY&gt;</span>
+
+<span class="cm"># Obtenir le token de jonction</span>
+kubeadm token create --print-join-command</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Joindre CP2 et CP3</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-2 et control-plane-3</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">kubeadm join 192.168.1.100:6443 \
+  --token &lt;TOKEN&gt; \
+  --discovery-token-ca-cert-hash sha256:&lt;HASH&gt; \
+  --control-plane \
+  --certificate-key &lt;CERT_KEY&gt;
+
+<span class="cm"># Sur chaque CP, configurer kubectl</span>
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+
+<span class="cm"># Vérifier depuis CP1</span>
+kubectl get nodes</div></div>
+        </div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(4,document.querySelectorAll('.install-btn')[4])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(6,document.querySelectorAll('.install-btn')[6])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 7 -->
+      <div class="install-phase" id="phase-6">
+        <div class="phase-h"><h2>Join Worker Nodes</h2><p>Intégrer les 4 workers au cluster. Les workers exécuteront les pods applicatifs.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Joindre les workers</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">worker-1, worker-2, worker-3, worker-4</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">kubeadm join 192.168.1.100:6443 \
+  --token &lt;TOKEN&gt; \
+  --discovery-token-ca-cert-hash sha256:&lt;HASH&gt;</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Labelliser les workers</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="ck">for</span> i <span class="cf">in</span> 1 2 3 4; <span class="ck">do</span>
+  kubectl label node worker-$i node-role.kubernetes.io/worker=worker
+<span class="ck">done</span>
+
+<span class="cm"># Vérifier — tous les nodes doivent être NotReady (CNI pas encore installé)</span>
+kubectl get nodes -o wide</div></div>
+        </div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(5,document.querySelectorAll('.install-btn')[5])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(7,document.querySelectorAll('.install-btn')[7])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 8 -->
+      <div class="install-phase" id="phase-7">
+        <div class="phase-h"><h2>CNI — Calico</h2><p>Le réseau de pods (CNI) est requis pour que les nodes passent en Ready et que les pods puissent communiquer.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Installer l'opérateur Calico</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">kubectl create -f \
+  https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Configurer le pod CIDR</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> | kubectl apply -f -
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  calicoNetwork:
+    ipPools:
+    - name: default-ipv4-ippool
+      cidr: 10.244.0.0/16
+      encapsulation: VXLANCrossSubnet
+      natOutgoing: Enabled
+EOF
+
+<span class="cm"># Attendre que tous les nodes soient Ready</span>
+kubectl wait --for=condition=Ready nodes --all --timeout=300s
+kubectl get nodes</div></div>
+        </div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(6,document.querySelectorAll('.install-btn')[6])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(8,document.querySelectorAll('.install-btn')[8])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 9 -->
+      <div class="install-phase" id="phase-8">
+        <div class="phase-h"><h2>Longhorn — Stockage Distribué</h2><p>Déployez Longhorn pour le stockage persistant répliqué. Pré-requis : open-iscsi sur tous les workers.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Prérequis sur tous les workers</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">tous les workers</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">apt-get install -y open-iscsi nfs-common cryptsetup dmsetup
+systemctl enable --now iscsid
+
+<span class="cm"># Vérifier les prérequis</span>
+curl -sSfL \
+  https://raw.githubusercontent.com/longhorn/longhorn/v1.6.0/scripts/environment_check.sh \
+  | bash</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Installer Helm puis Longhorn</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="cm"># Installer Helm</span>
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+<span class="cm"># Ajouter le repo Longhorn</span>
+helm repo add longhorn https://charts.longhorn.io
+helm repo update
+
+<span class="cm"># Installer Longhorn</span>
+helm install longhorn longhorn/longhorn \
+  --namespace longhorn-system \
+  --create-namespace \
+  --version 1.6.0 \
+  --set defaultSettings.defaultReplicaCount=3 \
+  --set defaultSettings.storageMinimalAvailablePercentage=15
+
+<span class="cm"># Attendre</span>
+kubectl -n longhorn-system rollout status deploy/longhorn-driver-deployer</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">3</div><div class="step-title">Définir Longhorn comme StorageClass par défaut</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="cm"># Retirer l'annotation default de local-path</span>
+kubectl patch storageclass local-path -p \
+  <span class="cs">'{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'</span>
+
+<span class="cm"># Définir Longhorn comme défaut</span>
+kubectl patch storageclass longhorn -p \
+  <span class="cs">'{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'</span>
+
+kubectl get storageclass</div></div>
+        </div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(7,document.querySelectorAll('.install-btn')[7])">← Précédent</button>
+          <button class="pnav-btn next" onclick="showPhase(9,document.querySelectorAll('.install-btn')[9])">Phase suivante →</button>
+        </div>
+      </div>
+
+      <!-- PHASE 10 -->
+      <div class="install-phase" id="phase-9">
+        <div class="phase-h"><h2>ArgoCD — GitOps</h2><p>Déployez ArgoCD pour gérer toutes vos applications via Git. Le cluster s'auto-configure depuis votre repo.</p></div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">1</div><div class="step-title">Installer ArgoCD</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content">kubectl create namespace argocd
+
+kubectl apply -n argocd -f \
+  https://raw.githubusercontent.com/argoproj/argo-cd/v2.9.0/manifests/install.yaml
+
+<span class="cm"># Attendre que tout soit Ready</span>
+kubectl -n argocd wait --for=condition=Ready pods --all --timeout=300s
+
+<span class="cm"># Récupérer le mot de passe admin initial</span>
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d && echo</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">2</div><div class="step-title">Exposer l'interface web</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><span class="code-target">control-plane-1</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="cm"># Option NodePort (accès direct)</span>
+kubectl patch svc argocd-server -n argocd \
+  -p <span class="cs">'{"spec":{"type":"NodePort"}}'</span>
+
+<span class="cm"># Ou port-forward pour test</span>
+kubectl port-forward svc/argocd-server -n argocd 8080:443</div></div>
+        </div>
+        <div class="step">
+          <div class="step-head"><div class="step-n">3</div><div class="step-title">Créer votre première Application</div></div>
+          <div class="code-block"><div class="code-header"><span class="code-lang">yaml</span><span class="code-target">app.yaml</span><button class="copy-btn" onclick="copyCode(this)">copier</button></div><div class="code-content"><span class="ck">cat</span> <span class="cs">&lt;&lt;EOF</span> | kubectl apply -f -
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mon-org/mon-repo.git
+    targetRevision: HEAD
+    path: k8s/
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: my-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+EOF</div></div>
+        </div>
+        <div class="alert ok">✓ Cluster complet ! Kubernetes HA + Longhorn + ArgoCD opérationnels. Utilisez la checklist ci-dessous pour valider chaque étape.</div>
+        <div class="phase-nav-btns">
+          <button class="pnav-btn" onclick="showPhase(8,document.querySelectorAll('.install-btn')[8])">← Précédent</button>
+          <button class="pnav-btn" onclick="document.getElementById('checklist').scrollIntoView({behavior:'smooth'})">Voir la checklist ✓</button>
+        </div>
+      </div>
+
+    </div><!-- /install-phases -->
+  </div><!-- /install-layout -->
+</div>
+</section>
+
+<!-- CHECKLIST -->
+<section id="checklist">
+<div class="container">
+  <span class="sec-tag">Checklist</span>
+  <h2 class="sec-title">Suivi d'installation</h2>
+  <p class="sec-desc" style="margin-bottom:2rem;">Cochez chaque étape au fur et à mesure. Votre progression est sauvegardée localement.</p>
+
+  <div class="checklist-layout">
+    <div class="checklist-phases" id="checklistContainer"></div>
+    <div class="checklist-sidebar">
+      <div class="progress-card">
+        <div class="prog-title">Progression globale</div>
+        <div class="ring-wrap">
+          <svg width="110" height="110" viewBox="0 0 110 110">
+            <circle class="ring-bg" cx="55" cy="55" r="46"/>
+            <circle class="ring-fill" id="ringFill" cx="55" cy="55" r="46"
+              stroke-dasharray="289" stroke-dashoffset="289"/>
+            <g class="ring-text">
+              <text class="ring-pct" id="ringPct" x="55" y="51">0%</text>
+              <text class="ring-lbl" x="55" y="66">complété</text>
+            </g>
+          </svg>
+        </div>
+        <ul class="phase-bars" id="phaseBars"></ul>
+        <button class="reset-btn" onclick="resetChecklist()">↺ Réinitialiser</button>
       </div>
     </div>
   </div>
-
-  <div class="panel">
-    <div class="panel-title">COMPOSANTS WORKER NODE</div>
-    <div class="concept">
-      <div class="concept-icon">🤖</div>
-      <div>
-        <div class="concept-title">kubelet</div>
-        <div class="concept-desc">Agent sur chaque node. Reçoit les PodSpecs, pilote le container runtime (containerd/CRI-O), remonte les métriques.</div>
-      </div>
-    </div>
-    <div class="concept">
-      <div class="concept-icon">🌐</div>
-      <div>
-        <div class="concept-title">kube-proxy</div>
-        <div class="concept-desc">Gère les règles réseau (iptables ou eBPF). Implémente les Services pour load-balancer le trafic vers les pods.</div>
-      </div>
-    </div>
-    <div class="concept">
-      <div class="concept-icon">📦</div>
-      <div>
-        <div class="concept-title">Container Runtime</div>
-        <div class="concept-desc">containerd ou CRI-O. Lance les containers à partir des images OCI. Kubernetes ne parle plus directement à Docker.</div>
-      </div>
-    </div>
-    <div class="concept">
-      <div class="concept-icon">💾</div>
-      <div>
-        <div class="concept-title">Longhorn CSI Driver</div>
-        <div class="concept-desc">Plugin CSI sur chaque node. Monte les volumes Longhorn dans les pods, réplique les blocs de données entre nodes.</div>
-      </div>
-    </div>
-  </div>
-
 </div>
+</section>
 
-<footer style="margin-top:36px;">
-  KUBERNETES CLUSTER // ARCHITECTURE PÉDAGOGIQUE // 3 CONTROL PLANES + 4 WORKERS // LONGHORN + ARGOCD
-</footer>
+<footer>KUBERNETES CLUSTER // ARCHITECTURE PÉDAGOGIQUE // 3 CP + 4 WORKERS // LONGHORN + ARGOCD // v1.31</footer>
 
-</div>
+<script>
+// ─── TERMINAL ANIMATION ───
+const lines = [
+  {p:'root@cp-1:~$', c:'kubectl get nodes', delay:400},
+  {o:'NAME              STATUS   ROLES           AGE', cls:'g', delay:900},
+  {o:'control-plane-1   Ready    control-plane   12d', cls:'g', delay:1050},
+  {o:'control-plane-2   Ready    control-plane   12d', cls:'g', delay:1150},
+  {o:'control-plane-3   Ready    control-plane   12d', cls:'g', delay:1250},
+  {o:'worker-1          Ready    worker          12d', cls:'c', delay:1350},
+  {o:'worker-2          Ready    worker          12d', cls:'c', delay:1420},
+  {o:'worker-3          Ready    worker          12d', cls:'c', delay:1490},
+  {o:'worker-4          Ready    worker          12d', cls:'c', delay:1560},
+  {p:'root@cp-1:~$', c:'kubectl get pods -n longhorn-system | head -4', delay:2100},
+  {o:'longhorn-manager-xxxxx   Running   12d', cls:'g', delay:2600},
+  {o:'longhorn-driver-xxxxx    Running   12d', cls:'g', delay:2700},
+  {p:'root@cp-1:~$', c:'argocd app list', delay:3200},
+  {o:'NAME              CLUSTER    STATUS  HEALTH', cls:'', delay:3700},
+  {o:'monitoring-stack  in-cluster Synced  Healthy', cls:'g', delay:3800},
+  {o:'ingress-nginx     in-cluster Synced  Healthy', cls:'g', delay:3900},
+  {cur:true, delay:4400}
+];
+const tb = document.getElementById('termBody');
+lines.forEach(l => {
+  setTimeout(() => {
+    const s = document.createElement('span');
+    s.className = 'tl';
+    if (l.cur) { s.innerHTML = '<span class="pr">root@cp-1:~$</span> <span class="cursor"></span>'; }
+    else if (l.p) { s.innerHTML = `<span class="pr">${l.p}</span> <span class="tc">${l.c}</span>`; }
+    else { s.innerHTML = `<span class="to ${l.cls||''}">${l.o}</span>`; }
+    tb.appendChild(s);
+  }, l.delay);
+});
+
+// ─── NAV ACTIVE ───
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  const sections = ['hero','topology','composants','install','checklist'];
+  let current = 'hero';
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.scrollY >= el.offsetTop - 80) current = id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+
+// ─── INSTALL GUIDE ───
+function showPhase(idx, btn) {
+  document.querySelectorAll('.install-phase').forEach((p,i) => p.classList.toggle('active', i === idx));
+  document.querySelectorAll('.install-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ─── COPY CODE ───
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('.code-content').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = '✓ copié';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copier'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ─── CHECKLIST DATA ───
+const CHECKLIST = [
+  { phase:'Phase 1 — Prérequis', items:[
+    'Mettre à jour tous les nœuds (apt upgrade)',
+    'Désactiver le swap sur tous les nœuds',
+    'Charger les modules kernel (overlay, br_netfilter)',
+    'Configurer les paramètres sysctl réseau',
+    'Renseigner /etc/hosts avec tous les IPs',
+    'Définir les hostnames uniques sur chaque nœud',
+  ]},
+  { phase:'Phase 2 — containerd', items:[
+    'Installer containerd sur tous les nœuds',
+    'Générer la config par défaut containerd',
+    'Activer SystemdCgroup dans config.toml',
+    'Redémarrer et activer le service containerd',
+  ]},
+  { phase:'Phase 3 — Outils K8s', items:[
+    'Ajouter le dépôt Kubernetes (v1.31)',
+    'Installer kubeadm, kubelet, kubectl',
+    'Verrouiller les versions avec apt-mark hold',
+    'Activer le service kubelet',
+  ]},
+  { phase:'Phase 4 — HAProxy + Keepalived', items:[
+    'Installer HAProxy et Keepalived sur le LB',
+    'Configurer HAProxy avec les 3 CP en backend',
+    'Configurer Keepalived avec la VIP 192.168.1.100',
+    'Activer et vérifier les services HA',
+  ]},
+  { phase:'Phase 5 — Init CP1', items:[
+    'Créer le fichier kubeadm-config.yaml',
+    'Lancer kubeadm init --upload-certs',
+    'Configurer kubectl ($HOME/.kube/config)',
+    'Sauvegarder les tokens de jonction',
+  ]},
+  { phase:'Phase 6 — Join CP2 & CP3', items:[
+    'Joindre control-plane-2 avec --control-plane',
+    'Joindre control-plane-3 avec --control-plane',
+    'Configurer kubectl sur CP2 et CP3',
+    'Vérifier 3 CPs Ready depuis CP1',
+  ]},
+  { phase:'Phase 7 — Workers', items:[
+    'Joindre worker-1 au cluster',
+    'Joindre worker-2 au cluster',
+    'Joindre worker-3 au cluster',
+    'Joindre worker-4 au cluster',
+    'Labelliser les workers (node-role=worker)',
+  ]},
+  { phase:'Phase 8 — CNI Calico', items:[
+    'Installer l\'opérateur Tigera/Calico',
+    'Appliquer la config Installation CRD',
+    'Vérifier que tous les nodes passent Ready',
+    'Vérifier les pods calico-system Running',
+  ]},
+  { phase:'Phase 9 — Longhorn', items:[
+    'Installer open-iscsi sur tous les workers',
+    'Vérifier les prérequis (environment_check.sh)',
+    'Installer Helm sur CP1',
+    'Déployer Longhorn via Helm (replicas ×3)',
+    'Définir Longhorn comme StorageClass par défaut',
+    'Vérifier les pods longhorn-system Running',
+  ]},
+  { phase:'Phase 10 — ArgoCD', items:[
+    'Créer le namespace argocd',
+    'Appliquer le manifest install.yaml d\'ArgoCD',
+    'Récupérer le mot de passe admin initial',
+    'Exposer l\'UI ArgoCD (NodePort ou Ingress)',
+    'Installer le CLI argocd',
+    'Créer la première Application ArgoCD',
+    'Vérifier la synchronisation Git → cluster',
+  ]},
+];
+
+function getState() {
+  try { return JSON.parse(localStorage.getItem('k8s-checklist') || '{}'); } catch { return {}; }
+}
+function setState(s) { localStorage.setItem('k8s-checklist', JSON.stringify(s)); }
+
+function renderChecklist() {
+  const state = getState();
+  const container = document.getElementById('checklistContainer');
+  container.innerHTML = '';
+  CHECKLIST.forEach((phase, pi) => {
+    const done = phase.items.filter((_,ii) => state[`${pi}-${ii}`]).length;
+    const div = document.createElement('div');
+    div.className = 'cl-phase';
+    div.innerHTML = `
+      <div class="cl-phase-head">
+        <div class="cl-phase-title">
+          <span style="width:6px;height:6px;border-radius:50%;background:${done===phase.items.length?'var(--green)':'var(--border2)'};display:inline-block"></span>
+          ${phase.phase}
+        </div>
+        <span class="cl-phase-count">${done}/${phase.items.length}</span>
+      </div>
+      <ul class="cl-items">
+        ${phase.items.map((item,ii) => `
+          <li class="cl-item ${state[`${pi}-${ii}`]?'done':''}" onclick="toggleItem(${pi},${ii},this)">
+            <div class="cl-cb">${state[`${pi}-${ii}`]?'✓':''}</div>
+            <div class="cl-text">${item}</div>
+          </li>
+        `).join('')}
+      </ul>`;
+    container.appendChild(div);
+  });
+  updateProgress();
+}
+
+function toggleItem(pi, ii, el) {
+  const state = getState();
+  const key = `${pi}-${ii}`;
+  state[key] = !state[key];
+  setState(state);
+  el.classList.toggle('done', state[key]);
+  el.querySelector('.cl-cb').textContent = state[key] ? '✓' : '';
+  el.querySelector('.cl-text').style.textDecoration = state[key] ? 'line-through' : '';
+  // update phase count
+  const phase = CHECKLIST[pi];
+  const done = phase.items.filter((_,i) => state[`${pi}-${i}`]).length;
+  el.closest('.cl-phase').querySelector('.cl-phase-count').textContent = `${done}/${phase.items.length}`;
+  const dot = el.closest('.cl-phase').querySelector('.cl-phase-head span');
+  dot.style.background = done === phase.items.length ? 'var(--green)' : 'var(--border2)';
+  updateProgress();
+}
+
+function updateProgress() {
+  const state = getState();
+  const total = CHECKLIST.reduce((a,p) => a + p.items.length, 0);
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / total * 100);
+  const circ = 289;
+  document.getElementById('ringFill').style.strokeDashoffset = circ - (circ * pct / 100);
+  document.getElementById('ringPct').textContent = pct + '%';
+
+  const bars = document.getElementById('phaseBars');
+  bars.innerHTML = CHECKLIST.map((phase, pi) => {
+    const pdone = phase.items.filter((_,ii) => state[`${pi}-${ii}`]).length;
+    const ppct = Math.round(pdone / phase.items.length * 100);
+    const label = phase.phase.replace('Phase ','P').split('—')[0].trim();
+    return `<li class="phase-bar-item">
+      <span class="pbi-label">${label}</span>
+      <div class="mini-bar"><div class="mini-fill" style="width:${ppct}%"></div></div>
+      <span class="pbi-count">${pdone}/${phase.items.length}</span>
+    </li>`;
+  }).join('');
+}
+
+function resetChecklist() {
+  if (confirm('Réinitialiser toute la progression ?')) {
+    localStorage.removeItem('k8s-checklist');
+    renderChecklist();
+  }
+}
+
+renderChecklist();
+</script>
 </body>
 </html>
