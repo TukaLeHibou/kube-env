@@ -4,258 +4,1224 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KubeEnv — Cluster K8s HA · Guide Pédagogique</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#04080f;--bg2:#070d17;--panel:#0a1525;--panel2:#0d1e33;--panel3:#0f2138;
-  --border:#132240;--border2:#1a3050;
-  --k8s:#326CE5;--k8s-g:rgba(50,108,229,0.35);
-  --cyan:#00e5ff;--cyan-d:rgba(0,229,255,0.12);
-  --green:#00ffb3;--green-d:rgba(0,255,179,0.12);
-  --orange:#ff8c42;--red:#ff4466;--yellow:#ffd166;--purple:#b388ff;
-  --text:#5a7a9a;--bright:#a0c4e0;--white:#deeeff;
-  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+/* ═══════════════════════════════════════════════════
+   KUBE-ENV — CYBERPUNK KUBERNETES GUIDE
+   Theme: Deep void + neon data streams
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  --void: #020408;
+  --void2: #040810;
+  --abyss: #06101c;
+  --panel: rgba(6,16,28,0.85);
+  --panel-solid: #08132a;
+  --glass: rgba(8,20,42,0.55);
+  --glass2: rgba(12,28,52,0.6);
+  --border: rgba(20,50,90,0.4);
+  --border-bright: rgba(30,70,130,0.5);
+  --k8s: #4285f4;
+  --k8s-g: rgba(66,133,244,0.3);
+  --cyan: #00f0ff;
+  --cyan-dim: rgba(0,240,255,0.08);
+  --green: #00ffa3;
+  --green-dim: rgba(0,255,163,0.08);
+  --orange: #ff9f43;
+  --red: #ff4757;
+  --yellow: #feca57;
+  --purple: #a55eea;
+  --pink: #ff6b9d;
+  --text: #4a7a9f;
+  --text-mid: #6a9ac0;
+  --bright: #a0cfef;
+  --white: #e4f0ff;
+  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Outfit', sans-serif;
+  --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
+  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;}
-body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:300;}
+
+[data-theme="oled"] {
+  --void: #000000;
+  --void2: #010204;
+  --abyss: #020408;
+  --panel: rgba(2,4,10,0.9);
+  --panel-solid: #030610;
+  --glass: rgba(4,8,18,0.65);
+  --glass2: rgba(6,12,24,0.7);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--display);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 2px,
+    rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─── SCROLL REVEAL ─── */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ─── SCROLL PROGRESS ─── */
+#scrollProgress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--k8s), var(--cyan), var(--green));
+  z-index: 10001;
+  transition: width 0.05s linear;
+}
 
 /* ─── NAV ─── */
-nav{position:fixed;top:0;left:0;right:0;z-index:200;height:54px;background:rgba(4,8,15,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 2rem;gap:2rem;}
-.nav-logo{font-family:var(--mono);font-weight:700;font-size:.85rem;color:var(--cyan);letter-spacing:.15em;white-space:nowrap;text-decoration:none;}
-.nav-logo span{color:var(--k8s);}
-.nav-links{display:flex;gap:2px;list-style:none;flex:1;}
-.nav-links a{color:var(--text);text-decoration:none;font-size:.78rem;padding:.3rem .7rem;border-radius:4px;transition:all .15s;font-family:var(--mono);}
-.nav-links a:hover{color:var(--bright);background:rgba(255,255,255,0.04);}
-.nav-links a.active{color:var(--cyan);}
-.nav-status{display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:.7rem;color:var(--text);}
-.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: 56px;
+  background: rgba(2,4,8,0.8);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  gap: 1.5rem;
+  transition: background 0.3s;
+}
+nav.scrolled { background: rgba(2,4,8,0.95); }
+
+.nav-logo {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: .85rem;
+  color: var(--cyan);
+  letter-spacing: .2em;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+.nav-logo span { color: var(--k8s); }
+.nav-logo::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--cyan);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--cyan), 0 0 20px rgba(0,240,255,0.3);
+  animation: pulse-cyan 2s ease-in-out infinite;
+}
+@keyframes pulse-cyan {
+  0%,100% { box-shadow: 0 0 8px var(--cyan), 0 0 20px rgba(0,240,255,0.3); }
+  50% { box-shadow: 0 0 12px var(--cyan), 0 0 35px rgba(0,240,255,0.5); }
+}
+
+.nav-links {
+  display: flex;
+  gap: 2px;
+  list-style: none;
+  flex: 1;
+}
+.nav-links a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: .75rem;
+  font-weight: 500;
+  padding: .35rem .8rem;
+  border-radius: 6px;
+  transition: all .2s;
+  font-family: var(--mono);
+  letter-spacing: .03em;
+  position: relative;
+}
+.nav-links a:hover { color: var(--bright); background: rgba(255,255,255,0.04); }
+.nav-links a.active {
+  color: var(--cyan);
+  background: rgba(0,240,255,0.06);
+}
+.nav-links a.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--cyan);
+  border-radius: 1px;
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--text);
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: blink 2.5s infinite;
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .65rem;
+  padding: .25rem .5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.theme-toggle:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
 
 /* ─── HERO ─── */
-#hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 2rem 3rem;position:relative;overflow:hidden;}
-.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 25% 40%,rgba(50,108,229,0.06) 0%,transparent 55%),radial-gradient(ellipse at 75% 60%,rgba(0,229,255,0.04) 0%,transparent 55%);}
-.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(19,34,64,.4) 1px,transparent 1px),linear-gradient(90deg,rgba(19,34,64,.4) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse at center,black 0%,transparent 72%);}
-.hero-inner{position:relative;text-align:center;max-width:860px;}
-.hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:var(--panel);border:1px solid var(--border2);border-radius:100px;padding:.3rem .9rem;font-family:var(--mono);font-size:.7rem;color:var(--cyan);margin-bottom:1.5rem;}
-.hero-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);}
-.hero-title{font-family:var(--sans);font-weight:800;font-size:clamp(2.4rem,5.5vw,4.2rem);line-height:1.08;letter-spacing:-.03em;color:var(--white);margin-bottom:.9rem;}
-.hero-title .hl-cyan{color:var(--cyan);}
-.hero-title .hl-k8s{color:var(--k8s);}
-.hero-title .hl-green{color:var(--green);}
-.hero-sub{font-size:1rem;color:var(--text);max-width:560px;margin:0 auto 2.5rem;line-height:1.75;}
-.hero-stats{display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap;margin-bottom:2.5rem;}
-.hstat{text-align:center;}
-.hstat-val{font-family:var(--mono);font-size:1.8rem;font-weight:700;color:var(--white);display:block;line-height:1;}
-.hstat-lbl{font-size:.68rem;color:var(--text);text-transform:uppercase;letter-spacing:.1em;margin-top:.3rem;}
-.hero-terminal{background:var(--panel);border:1px solid var(--border2);border-radius:10px;max-width:680px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);}
-.term-bar{background:var(--panel2);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;}
-.term-dots{display:flex;gap:.35rem;}
-.term-dot{width:11px;height:11px;border-radius:50%;}
-.td-r{background:#ff5f57;}.td-y{background:#febc2e;}.td-g{background:#28c840;}
-.term-title{flex:1;text-align:center;font-family:var(--mono);font-size:.7rem;color:var(--text);}
-.term-body{padding:1.25rem 1.5rem;font-family:var(--mono);font-size:.82rem;line-height:1.9;min-height:190px;}
-.tl{display:block;}
-.pr{color:var(--green);}
-.tc{color:var(--white);}
-.to{color:var(--text);}
-.to.g{color:var(--green);}
-.to.c{color:var(--cyan);}
-.to.y{color:var(--yellow);}
-.to.o{color:var(--orange);}
-.cursor{display:inline-block;width:7px;height:.9em;background:var(--green);vertical-align:text-bottom;animation:blink 1s step-end infinite;}
+#hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 2rem 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated grid background */
+.hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(20,50,90,0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,50,90,0.15) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 45%, black 0%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 45%, black 0%, transparent 100%);
+  animation: grid-drift 20s linear infinite;
+}
+@keyframes grid-drift {
+  0% { transform: translate(0,0); }
+  100% { transform: translate(60px,60px); }
+}
+
+/* Nebula glow */
+.hero-nebula {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 45% 50% at 20% 35%, rgba(66,133,244,0.07) 0%, transparent 100%),
+    radial-gradient(ellipse 40% 45% at 80% 55%, rgba(0,240,255,0.05) 0%, transparent 100%),
+    radial-gradient(ellipse 30% 35% at 50% 70%, rgba(0,255,163,0.03) 0%, transparent 100%);
+}
+
+#particleCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hero-inner {
+  position: relative;
+  text-align: center;
+  max-width: 900px;
+  z-index: 2;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-bright);
+  border-radius: 100px;
+  padding: .35rem 1rem;
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--cyan);
+  margin-bottom: 2rem;
+  animation: float-in 1s var(--ease-out-expo) both;
+}
+.hero-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: blink 2s infinite;
+}
+
+.hero-title {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -.04em;
+  color: var(--white);
+  margin-bottom: 1.2rem;
+  animation: title-reveal 1.2s var(--ease-out-expo) 0.15s both;
+}
+.hero-title .hl-cyan {
+  background: linear-gradient(135deg, var(--cyan), #40e0ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-title .hl-k8s {
+  background: linear-gradient(135deg, #5a9fff, var(--k8s));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-title .hl-green {
+  background: linear-gradient(135deg, var(--green), #40ffb0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes title-reveal {
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hero-sub {
+  font-size: 1rem;
+  color: var(--text-mid);
+  max-width: 580px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.8;
+  font-weight: 400;
+  animation: float-in 1s var(--ease-out-expo) 0.3s both;
+}
+
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
+  animation: float-in 1s var(--ease-out-expo) 0.45s both;
+}
+.hstat { text-align: center; }
+.hstat-val {
+  font-family: var(--mono);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--white);
+  display: block;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(0,240,255,0.2);
+}
+.hstat-lbl {
+  font-size: .68rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  margin-top: .4rem;
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+@keyframes float-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Terminal */
+.hero-terminal {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-bright);
+  border-radius: 14px;
+  max-width: 720px;
+  margin: 0 auto;
+  overflow: hidden;
+  box-shadow:
+    0 25px 80px rgba(0,0,0,.7),
+    0 0 40px rgba(0,240,255,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  animation: terminal-rise 1.2s var(--ease-out-expo) 0.6s both;
+}
+@keyframes terminal-rise {
+  from { opacity: 0; transform: translateY(40px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.term-bar {
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border);
+  padding: .65rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.term-dots { display: flex; gap: .4rem; }
+.term-dot { width: 12px; height: 12px; border-radius: 50%; transition: opacity .2s; }
+.term-dot:hover { opacity: .7; }
+.td-r { background: #ff5f57; }
+.td-y { background: #febc2e; }
+.td-g { background: #28c840; }
+.term-title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--text);
+  letter-spacing: .05em;
+}
+.term-body {
+  padding: 1.3rem 1.6rem;
+  font-family: var(--mono);
+  font-size: .8rem;
+  line-height: 1.95;
+  min-height: 200px;
+}
+.tl { display: block; }
+.pr { color: var(--green); }
+.tc { color: var(--white); }
+.to { color: var(--text); }
+.to.g { color: var(--green); }
+.to.c { color: var(--cyan); }
+.to.y { color: var(--yellow); }
+.to.o { color: var(--orange); }
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background: var(--green);
+  vertical-align: text-bottom;
+  animation: cursor-blink 1s step-end infinite;
+  box-shadow: 0 0 6px var(--green);
+}
+@keyframes cursor-blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
 
 /* ─── SECTIONS ─── */
-section{padding:5rem 2rem;}
-.container{max-width:1240px;margin:0 auto;}
-.sec-tag{font-family:var(--mono);font-size:.68rem;color:var(--cyan);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.6rem;display:block;}
-.sec-title{font-size:clamp(1.7rem,3.5vw,2.5rem);font-weight:700;color:var(--white);letter-spacing:-.02em;margin-bottom:.75rem;}
-.sec-desc{color:var(--text);font-size:.9rem;line-height:1.75;max-width:580px;}
+section { padding: 6rem 2rem; }
+.container { max-width: 1280px; margin: 0 auto; }
+.sec-tag {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: .2em;
+  margin-bottom: .7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+.sec-tag::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: var(--cyan);
+  box-shadow: 0 0 4px var(--cyan);
+}
+.sec-title {
+  font-family: var(--display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -.03em;
+  margin-bottom: .8rem;
+}
+.sec-desc {
+  color: var(--text-mid);
+  font-size: .92rem;
+  line-height: 1.8;
+  max-width: 600px;
+}
 
-/* ─── PANELS ─── */
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;position:relative;overflow:hidden;}
-.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--k8s),transparent);opacity:.5;}
-.panel-title{font-family:var(--mono);font-size:.6rem;letter-spacing:.28em;color:var(--cyan);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-.panel-title::before{content:'';width:6px;height:6px;background:var(--cyan);border-radius:50%;box-shadow:0 0 7px var(--cyan);animation:blink 2.5s infinite;}
+/* ─── PANELS / GLASSMORPHISM ─── */
+.panel {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .3s, box-shadow .3s, transform .3s;
+}
+.panel:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 8px 40px rgba(0,0,0,.4), 0 0 20px rgba(0,240,255,0.03);
+  transform: translateY(-2px);
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 5%, var(--k8s) 50%, transparent 95%);
+  opacity: .4;
+}
+.panel-title {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .3em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.panel-title::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--cyan);
+  animation: blink 2.5s infinite;
+}
 
 /* ─── TOPOLOGY ─── */
-#topology{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-.topo-wrap{padding:0;}
-.topo-inner{position:relative;width:100%;height:490px;}
-.topo-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
-.node{position:absolute;transform:translate(-50%,-50%);text-align:center;cursor:pointer;transition:transform .2s;z-index:10;}
-.node:hover{transform:translate(-50%,-50%) scale(1.1);}
-.node:hover .tooltip{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
-.node-hex{width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:1.2rem;position:relative;}
-.node-hex.cp{background:rgba(50,108,229,.12);border:2px solid var(--k8s);box-shadow:0 0 14px var(--k8s-g);animation:pk 3s infinite;}
-.node-hex.wk{background:rgba(0,229,255,.08);border:2px solid var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.25);animation:pc 3.5s infinite;}
-.node-hex.argo{background:rgba(255,140,66,.1);border:2px solid var(--orange);box-shadow:0 0 12px rgba(255,140,66,.3);animation:po 2.8s infinite;width:52px;height:52px;}
-.node-hex.lh{background:rgba(0,255,179,.08);border:2px solid var(--green);box-shadow:0 0 12px rgba(0,255,179,.25);animation:pg 3.2s infinite;width:52px;height:52px;}
-.node-hex.inet{background:rgba(0,229,255,.06);border:2px solid rgba(0,229,255,.4);width:52px;height:52px;animation:pc 4s infinite;}
-.node-hex.etcd{width:44px;height:44px;border-radius:50%;background:rgba(255,209,102,.08);border:2px solid var(--yellow);box-shadow:0 0 10px rgba(255,209,102,.25);font-size:1rem;}
-.node-hex.vip{background:rgba(179,136,255,.1);border:2px solid var(--purple);box-shadow:0 0 12px rgba(179,136,255,.3);animation:pp 3s infinite;}
-@keyframes pk{0%,100%{box-shadow:0 0 14px var(--k8s-g);}50%{box-shadow:0 0 28px var(--k8s-g),0 0 50px rgba(50,108,229,.1);}}
-@keyframes pc{0%,100%{box-shadow:0 0 12px rgba(0,229,255,.25);}50%{box-shadow:0 0 24px rgba(0,229,255,.5);}}
-@keyframes po{0%,100%{box-shadow:0 0 12px rgba(255,140,66,.3);}50%{box-shadow:0 0 24px rgba(255,140,66,.6);}}
-@keyframes pg{0%,100%{box-shadow:0 0 12px rgba(0,255,179,.25);}50%{box-shadow:0 0 24px rgba(0,255,179,.5);}}
-@keyframes pp{0%,100%{box-shadow:0 0 12px rgba(179,136,255,.3);}50%{box-shadow:0 0 24px rgba(179,136,255,.6);}}
-.node-lbl{font-family:var(--mono);font-size:.55rem;color:var(--bright);letter-spacing:.05em;white-space:nowrap;}
-.node-sub{font-family:var(--mono);font-size:.47rem;color:var(--text);margin-top:2px;}
-.nbadge{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--bg);}
-.nbadge.run{background:var(--green);box-shadow:0 0 5px var(--green);}
-.nbadge.ready{background:var(--k8s);box-shadow:0 0 5px var(--k8s);}
-.tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(5px);background:var(--panel2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;width:210px;text-align:left;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,.7);}
-.tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
-.tt-title{font-family:var(--mono);font-size:.6rem;color:var(--cyan);margin-bottom:5px;letter-spacing:.1em;}
-.tt-desc{font-family:var(--mono);font-size:.57rem;color:var(--text);line-height:1.6;}
-.tt-tag{display:inline-block;margin-top:5px;font-size:.5rem;background:rgba(50,108,229,.15);color:var(--k8s);border:1px solid rgba(50,108,229,.3);padding:1px 6px;border-radius:2px;margin-right:3px;}
-.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-.leg{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.57rem;color:var(--text);}
-.leg-dot{width:8px;height:8px;border-radius:50%;}
+#topology {
+  background: var(--void2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+#topology::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(66,133,244,0.03) 0%, transparent 100%);
+  pointer-events: none;
+}
+.topo-wrap { padding: 0; }
+.topo-inner { position: relative; width: 100%; height: 500px; }
+.topo-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+.node {
+  position: absolute;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  cursor: pointer;
+  transition: transform .25s var(--ease-spring), filter .25s;
+  z-index: 10;
+}
+.node:hover {
+  transform: translate(-50%,-50%) scale(1.15);
+  filter: brightness(1.2);
+}
+.node:hover .tooltip {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.node-hex {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 7px;
+  font-size: 1.3rem;
+  position: relative;
+  transition: all .25s;
+}
+.node-hex.cp {
+  background: rgba(66,133,244,.1);
+  border: 2px solid var(--k8s);
+  box-shadow: 0 0 16px var(--k8s-g), inset 0 0 12px rgba(66,133,244,.05);
+  animation: glow-k8s 3s ease-in-out infinite;
+}
+.node-hex.wk {
+  background: var(--cyan-dim);
+  border: 2px solid var(--cyan);
+  box-shadow: 0 0 14px rgba(0,240,255,.2), inset 0 0 12px rgba(0,240,255,.03);
+  animation: glow-cyan 3.5s ease-in-out infinite;
+}
+.node-hex.argo {
+  background: rgba(255,159,67,.08);
+  border: 2px solid var(--orange);
+  box-shadow: 0 0 14px rgba(255,159,67,.25);
+  animation: glow-orange 2.8s ease-in-out infinite;
+  width: 54px; height: 54px;
+}
+.node-hex.lh {
+  background: var(--green-dim);
+  border: 2px solid var(--green);
+  box-shadow: 0 0 14px rgba(0,255,163,.2);
+  animation: glow-green 3.2s ease-in-out infinite;
+  width: 54px; height: 54px;
+}
+.node-hex.etcd {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: rgba(254,202,87,.06);
+  border: 2px solid var(--yellow);
+  box-shadow: 0 0 12px rgba(254,202,87,.2);
+  font-size: 1rem;
+}
+.node-hex.vip {
+  background: rgba(165,94,234,.08);
+  border: 2px solid var(--purple);
+  box-shadow: 0 0 14px rgba(165,94,234,.25);
+  animation: glow-purple 3s ease-in-out infinite;
+}
+
+@keyframes glow-k8s {
+  0%,100% { box-shadow: 0 0 16px var(--k8s-g); }
+  50% { box-shadow: 0 0 30px var(--k8s-g), 0 0 60px rgba(66,133,244,.08); }
+}
+@keyframes glow-cyan {
+  0%,100% { box-shadow: 0 0 14px rgba(0,240,255,.2); }
+  50% { box-shadow: 0 0 28px rgba(0,240,255,.4); }
+}
+@keyframes glow-orange {
+  0%,100% { box-shadow: 0 0 14px rgba(255,159,67,.25); }
+  50% { box-shadow: 0 0 28px rgba(255,159,67,.5); }
+}
+@keyframes glow-green {
+  0%,100% { box-shadow: 0 0 14px rgba(0,255,163,.2); }
+  50% { box-shadow: 0 0 28px rgba(0,255,163,.4); }
+}
+@keyframes glow-purple {
+  0%,100% { box-shadow: 0 0 14px rgba(165,94,234,.25); }
+  50% { box-shadow: 0 0 28px rgba(165,94,234,.5); }
+}
+
+.node-lbl { font-family: var(--mono); font-size: .58rem; color: var(--bright); letter-spacing: .05em; white-space: nowrap; }
+.node-sub { font-family: var(--mono); font-size: .48rem; color: var(--text); margin-top: 2px; }
+
+.nbadge { position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--void2); }
+.nbadge.run { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.nbadge.ready { background: var(--k8s); box-shadow: 0 0 6px var(--k8s); }
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--glass2);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  padding: 12px 16px;
+  width: 225px;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s var(--ease-out-expo);
+  z-index: 50;
+  box-shadow: 0 10px 40px rgba(0,0,0,.8);
+}
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border-bright);
+}
+.tt-title { font-family: var(--mono); font-size: .62rem; color: var(--cyan); margin-bottom: 6px; letter-spacing: .1em; }
+.tt-desc { font-family: var(--mono); font-size: .58rem; color: var(--text-mid); line-height: 1.65; }
+.tt-tag {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: .5rem;
+  background: rgba(66,133,244,.1);
+  color: var(--k8s);
+  border: 1px solid rgba(66,133,244,.25);
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.leg { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: .58rem; color: var(--text); }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
 
 /* ─── BOTTOM GRID ─── */
-.bottom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px;}
-@media(max-width:900px){.bottom-grid{grid-template-columns:1fr 1fr;}}
-@media(max-width:580px){.bottom-grid{grid-template-columns:1fr;}}
-.node-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(0,0,0,.25);border-radius:4px;border:1px solid var(--border);border-left:3px solid transparent;margin-bottom:7px;transition:border-color .2s,background .2s;}
-.node-row:last-child{margin-bottom:0;}
-.node-row:hover{background:rgba(50,108,229,.06);border-left-color:var(--k8s);}
-.node-row .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.dot.run{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
-.dot.ready{background:var(--k8s);box-shadow:0 0 6px var(--k8s);}
-.nr-name{font-family:var(--mono);font-size:.72rem;color:var(--bright);flex:1;}
-.nr-role{font-family:var(--mono);font-size:.52rem;letter-spacing:.1em;padding:1px 6px;border-radius:2px;}
-.nr-role.cp{background:rgba(50,108,229,.15);color:var(--k8s);border:1px solid rgba(50,108,229,.3);}
-.nr-role.wk{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25);}
-.bar-wrap{height:3px;background:var(--border);border-radius:2px;margin-top:3px;overflow:hidden;}
-.bar-fill{height:100%;border-radius:2px;animation:grow 1.5s ease-out forwards;transform-origin:left;}
-.bar-fill.blue{background:linear-gradient(90deg,#1a50a0,var(--k8s));}
-.bar-fill.teal{background:linear-gradient(90deg,#007a99,var(--cyan));}
-@keyframes grow{from{transform:scaleX(0);}to{transform:scaleX(1);}}
-.vol-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.vol-item{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:4px;padding:8px 10px;}
-.vol-name{font-family:var(--mono);font-size:.62rem;color:var(--bright);margin-bottom:3px;}
-.vol-size{font-family:var(--mono);font-size:.55rem;color:var(--text);}
-.vol-rep{font-family:var(--mono);font-size:.52rem;color:var(--green);margin-top:3px;}
-.vol-bar{height:3px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden;}
-.vol-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#00a070,var(--green));}
-.argo-app{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:4px;margin-bottom:7px;}
-.argo-sync{font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:3px;flex-shrink:0;}
-.argo-sync.synced{background:rgba(0,255,179,.1);color:var(--green);border:1px solid rgba(0,255,179,.3);}
-.argo-sync.oos{background:rgba(255,140,66,.1);color:var(--orange);border:1px solid rgba(255,140,66,.3);}
-.argo-name{font-family:var(--mono);font-size:.72rem;color:var(--bright);flex:1;}
-.argo-env{font-family:var(--mono);font-size:.55rem;color:var(--text);}
-.concept{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid rgba(19,34,64,.7);}
-.concept:last-child{border-bottom:none;}
-.concept-icon{font-size:1.1rem;flex-shrink:0;width:28px;text-align:center;margin-top:1px;}
-.concept-title{font-family:var(--mono);font-size:.68rem;color:var(--bright);margin-bottom:3px;}
-.concept-desc{font-family:var(--mono);font-size:.57rem;color:var(--text);line-height:1.6;}
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+@media(max-width:960px) { .bottom-grid { grid-template-columns: 1fr 1fr; } }
+@media(max-width:600px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+.node-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: rgba(0,0,0,.3);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  margin-bottom: 7px;
+  transition: all .2s;
+}
+.node-row:last-child { margin-bottom: 0; }
+.node-row:hover {
+  background: rgba(66,133,244,.05);
+  border-left-color: var(--k8s);
+  transform: translateX(3px);
+}
+.node-row .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot.run { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 2s infinite; }
+.dot.ready { background: var(--k8s); box-shadow: 0 0 6px var(--k8s); }
+.nr-name { font-family: var(--mono); font-size: .72rem; color: var(--bright); flex: 1; }
+.nr-role {
+  font-family: var(--mono);
+  font-size: .52rem;
+  letter-spacing: .12em;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.nr-role.cp { background: rgba(66,133,244,.12); color: var(--k8s); border: 1px solid rgba(66,133,244,.25); }
+.nr-role.wk { background: rgba(0,240,255,.08); color: var(--cyan); border: 1px solid rgba(0,240,255,.2); }
+.bar-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; animation: grow 1.5s ease-out forwards; transform-origin: left; }
+.bar-fill.blue { background: linear-gradient(90deg, #1a4ea0, var(--k8s)); }
+.bar-fill.teal { background: linear-gradient(90deg, #007a99, var(--cyan)); }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.vol-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vol-item {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  transition: border-color .2s;
+}
+.vol-item:hover { border-color: rgba(0,255,163,.25); }
+.vol-name { font-family: var(--mono); font-size: .64rem; color: var(--bright); margin-bottom: 3px; }
+.vol-size { font-family: var(--mono); font-size: .55rem; color: var(--text); }
+.vol-rep { font-family: var(--mono); font-size: .52rem; color: var(--green); margin-top: 3px; }
+.vol-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+.vol-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #00a070, var(--green)); }
+
+.argo-app {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 7px;
+  transition: all .2s;
+}
+.argo-app:hover { border-color: rgba(255,159,67,.25); transform: translateX(3px); }
+.argo-sync { font-family: var(--mono); font-size: .6rem; padding: 2px 8px; border-radius: 4px; flex-shrink: 0; font-weight: 600; }
+.argo-sync.synced { background: rgba(0,255,163,.08); color: var(--green); border: 1px solid rgba(0,255,163,.25); }
+.argo-sync.oos { background: rgba(255,159,67,.08); color: var(--orange); border: 1px solid rgba(255,159,67,.25); }
+.argo-name { font-family: var(--mono); font-size: .72rem; color: var(--bright); flex: 1; }
+.argo-env { font-family: var(--mono); font-size: .55rem; color: var(--text); }
+
+.concept {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(20,50,90,0.25);
+  transition: all .2s;
+}
+.concept:last-child { border-bottom: none; }
+.concept:hover { padding-left: 4px; }
+.concept-icon { font-size: 1.15rem; flex-shrink: 0; width: 30px; text-align: center; margin-top: 1px; }
+.concept-title { font-family: var(--mono); font-size: .7rem; color: var(--bright); margin-bottom: 3px; font-weight: 600; }
+.concept-desc { font-family: var(--mono); font-size: .58rem; color: var(--text); line-height: 1.65; }
 
 /* ─── INSTALL GUIDE ─── */
-#install{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-.install-layout{display:grid;grid-template-columns:240px 1fr;gap:2rem;align-items:start;}
-.install-nav{position:sticky;top:70px;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.install-nav-title{font-family:var(--mono);font-size:.58rem;letter-spacing:.2em;color:var(--text);padding:.7rem 1rem;border-bottom:1px solid var(--border);text-transform:uppercase;}
-.install-nav-list{list-style:none;}
-.install-btn{width:100%;text-align:left;padding:.55rem 1rem;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:.6rem;font-family:var(--mono);font-size:.7rem;color:var(--text);transition:all .15s;}
-.install-btn:last-child{border-bottom:none;}
-.install-btn:hover{background:rgba(255,255,255,.03);color:var(--bright);}
-.install-btn.active{background:rgba(50,108,229,.08);color:var(--cyan);}
-.install-btn.done{color:var(--green);}
-.install-num{width:18px;height:18px;border-radius:50%;background:var(--panel2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.58rem;flex-shrink:0;}
-.install-btn.active .install-num{background:var(--k8s);border-color:var(--k8s);color:#fff;}
-.install-btn.done .install-num{background:rgba(0,255,179,.15);border-color:var(--green);color:var(--green);}
-.install-phase{display:none;}
-.install-phase.active{display:block;animation:fadeup .3s ease;}
-@keyframes fadeup{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-.phase-h{margin-bottom:1.5rem;}
-.phase-h h2{font-size:1.4rem;font-weight:700;color:var(--white);margin-bottom:.4rem;}
-.phase-h p{font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.7;}
-.alert{border-radius:6px;padding:.85rem 1.1rem;font-family:var(--mono);font-size:.75rem;line-height:1.6;margin-bottom:1.25rem;display:flex;gap:.6rem;}
-.alert.warn{background:rgba(255,140,66,.08);border:1px solid rgba(255,140,66,.25);color:var(--orange);}
-.alert.info{background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2);color:var(--cyan);}
-.alert.ok{background:rgba(0,255,179,.06);border:1px solid rgba(0,255,179,.2);color:var(--green);}
-.step{margin-bottom:1.5rem;}
-.step-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;}
-.step-n{width:24px;height:24px;border-radius:50%;border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.65rem;font-weight:700;color:var(--cyan);flex-shrink:0;}
-.step-title{font-weight:600;font-size:.9rem;color:var(--white);}
-.step-desc{font-family:var(--mono);font-size:.72rem;color:var(--text);margin-bottom:.7rem;margin-left:2rem;line-height:1.65;}
-.code-block{background:var(--bg);border:1px solid var(--border2);border-radius:6px;overflow:hidden;margin-bottom:.75rem;}
-.code-header{display:flex;align-items:center;justify-content:space-between;padding:.45rem .9rem;background:var(--panel2);border-bottom:1px solid var(--border);}
-.code-lang{font-family:var(--mono);font-size:.65rem;color:var(--text);text-transform:uppercase;}
-.code-target{font-family:var(--mono);font-size:.65rem;color:var(--yellow);}
-.copy-btn{background:none;border:1px solid var(--border2);color:var(--text);font-size:.65rem;font-family:var(--mono);padding:.15rem .5rem;border-radius:3px;cursor:pointer;transition:all .15s;}
-.copy-btn:hover{border-color:var(--border2);color:var(--bright);}
-.copy-btn.copied{border-color:var(--green);color:var(--green);}
-.code-content{padding:1rem 1.1rem;font-family:var(--mono);font-size:.8rem;line-height:1.75;overflow-x:auto;white-space:pre;color:var(--bright);}
-.cm{color:var(--text);font-style:italic;}
-.ck{color:#ff7b72;}
-.cv{color:var(--green);}
-.cf{color:var(--yellow);}
-.cs{color:var(--orange);}
-.phase-nav-btns{display:flex;gap:.75rem;margin-top:1.5rem;}
-.pnav-btn{background:var(--panel);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:.75rem;padding:.5rem 1rem;border-radius:5px;cursor:pointer;transition:all .15s;}
-.pnav-btn:hover{color:var(--white);border-color:var(--border2);}
-.pnav-btn.next{background:rgba(50,108,229,.15);border-color:rgba(50,108,229,.4);color:var(--cyan);}
-.pnav-btn.next:hover{background:rgba(50,108,229,.25);}
+#install {
+  background: var(--void2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.install-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+/* Timeline sidebar */
+.install-nav {
+  position: sticky;
+  top: 72px;
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.install-nav-title {
+  font-family: var(--mono);
+  font-size: .56rem;
+  letter-spacing: .25em;
+  color: var(--text);
+  padding: .8rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+}
+.install-nav-list { list-style: none; padding: .4rem 0; }
+.install-btn {
+  width: 100%;
+  text-align: left;
+  padding: .55rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--text);
+  transition: all .2s;
+  position: relative;
+}
+.install-btn::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 100%;
+  width: 1px;
+  height: calc(100% - 18px);
+  background: var(--border);
+}
+.install-btn:last-child::before { display: none; }
+.install-btn:hover { color: var(--bright); background: rgba(255,255,255,0.02); }
+.install-btn.active { color: var(--cyan); background: rgba(0,240,255,0.04); }
+.install-btn.done { color: var(--green); }
+
+.install-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--panel-solid);
+  border: 1.5px solid var(--border-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .58rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  transition: all .3s;
+}
+.install-btn.active .install-num {
+  background: var(--k8s);
+  border-color: var(--k8s);
+  color: #fff;
+  box-shadow: 0 0 12px var(--k8s-g);
+}
+.install-btn.done .install-num {
+  background: rgba(0,255,163,.12);
+  border-color: var(--green);
+  color: var(--green);
+  box-shadow: 0 0 8px rgba(0,255,163,.2);
+}
+
+.install-phase { display: none; }
+.install-phase.active { display: block; animation: phase-in .4s var(--ease-out-expo); }
+@keyframes phase-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.phase-h { margin-bottom: 1.8rem; }
+.phase-h h2 { font-family: var(--display); font-size: 1.5rem; font-weight: 700; color: var(--white); margin-bottom: .5rem; }
+.phase-h p { font-family: var(--mono); font-size: .78rem; color: var(--text); line-height: 1.75; }
+
+.alert {
+  border-radius: 8px;
+  padding: .9rem 1.2rem;
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.65;
+  margin-bottom: 1.3rem;
+  display: flex;
+  gap: .65rem;
+  backdrop-filter: blur(8px);
+}
+.alert.warn { background: rgba(255,159,67,.06); border: 1px solid rgba(255,159,67,.2); color: var(--orange); }
+.alert.info { background: rgba(0,240,255,.04); border: 1px solid rgba(0,240,255,.15); color: var(--cyan); }
+.alert.ok { background: rgba(0,255,163,.04); border: 1px solid rgba(0,255,163,.15); color: var(--green); }
+
+.step { margin-bottom: 1.5rem; }
+.step-head { display: flex; align-items: center; gap: .65rem; margin-bottom: .5rem; }
+.step-n {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: .65rem;
+  font-weight: 700;
+  color: var(--cyan);
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(0,240,255,.15);
+}
+.step-title { font-family: var(--display); font-weight: 600; font-size: .92rem; color: var(--white); }
+.step-desc { font-family: var(--mono); font-size: .72rem; color: var(--text); margin-bottom: .7rem; margin-left: 2.2rem; line-height: 1.7; }
+
+/* Code blocks */
+.code-block {
+  background: rgba(0,0,0,.4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: .8rem;
+  transition: border-color .2s;
+}
+.code-block:hover { border-color: var(--border-bright); }
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5rem 1rem;
+  background: rgba(255,255,255,.02);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang { font-family: var(--mono); font-size: .62rem; color: var(--text); text-transform: uppercase; letter-spacing: .1em; }
+.code-target { font-family: var(--mono); font-size: .62rem; color: var(--yellow); }
+.copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: .62rem;
+  font-family: var(--mono);
+  padding: .2rem .6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.copy-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.copy-btn.copied { border-color: var(--green); color: var(--green); background: rgba(0,255,163,.05); }
+.code-content {
+  padding: 1.1rem 1.2rem;
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1.8;
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--bright);
+}
+.cm { color: var(--text); font-style: italic; }
+.ck { color: #ff7b72; }
+.cv { color: var(--green); }
+.cf { color: var(--yellow); }
+.cs { color: var(--orange); }
+
+.phase-nav-btns { display: flex; gap: .8rem; margin-top: 1.8rem; }
+.pnav-btn {
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .75rem;
+  padding: .55rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.pnav-btn:hover { color: var(--white); border-color: var(--border-bright); transform: translateY(-1px); }
+.pnav-btn.next {
+  background: rgba(66,133,244,.1);
+  border-color: rgba(66,133,244,.3);
+  color: var(--cyan);
+}
+.pnav-btn.next:hover { background: rgba(66,133,244,.18); box-shadow: 0 4px 15px rgba(66,133,244,.15); }
 
 /* ─── CHECKLIST ─── */
-#checklist{padding:5rem 2rem;}
-.checklist-layout{display:grid;grid-template-columns:1fr 300px;gap:2rem;align-items:start;}
-.checklist-phases{display:flex;flex-direction:column;gap:1.5rem;}
-.cl-phase{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.cl-phase-head{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.1rem;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
-.cl-phase-title{font-family:var(--mono);font-size:.72rem;color:var(--bright);display:flex;align-items:center;gap:.6rem;}
-.cl-phase-count{font-family:var(--mono);font-size:.65rem;color:var(--text);}
-.cl-items{list-style:none;padding:.5rem;}
-.cl-item{display:flex;align-items:flex-start;gap:.75rem;padding:.6rem .7rem;border-radius:5px;margin-bottom:.3rem;cursor:pointer;transition:all .15s;border:1px solid transparent;}
-.cl-item:hover{background:rgba(255,255,255,.02);border-color:var(--border);}
-.cl-item.done{background:rgba(0,255,179,.04);border-color:rgba(0,255,179,.15);}
-.cl-item.done .cl-text{color:var(--text);text-decoration:line-through;}
-.cl-cb{width:17px;height:17px;border-radius:4px;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;transition:all .2s;font-size:.7rem;}
-.cl-item.done .cl-cb{background:var(--green);border-color:var(--green);color:#000;}
-.cl-text{font-family:var(--mono);font-size:.75rem;color:var(--bright);line-height:1.4;transition:all .2s;}
-.cl-sub{font-family:var(--mono);font-size:.62rem;color:var(--text);margin-top:.2rem;}
-.checklist-sidebar{position:sticky;top:70px;display:flex;flex-direction:column;gap:1rem;}
-.progress-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1.25rem;}
-.prog-title{font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;color:var(--text);text-transform:uppercase;margin-bottom:1.1rem;text-align:center;}
-.ring-wrap{display:flex;justify-content:center;margin-bottom:1.1rem;}
-.ring-bg{fill:none;stroke:var(--border2);stroke-width:8;}
-.ring-fill{fill:none;stroke:var(--green);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
-.ring-pct{font-family:var(--mono);font-size:1.3rem;font-weight:700;fill:var(--white);text-anchor:middle;dominant-baseline:central;}
-.ring-lbl{font-family:var(--mono);font-size:.55rem;fill:var(--text);text-anchor:middle;dominant-baseline:central;}
-.phase-bars{list-style:none;}
-.phase-bar-item{display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:.62rem;color:var(--text);}
-.phase-bar-item:last-child{border-bottom:none;}
-.phase-bar-item .pbi-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mini-bar{flex:2;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
-.mini-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s;}
-.pbi-count{min-width:28px;text-align:right;color:var(--text);}
-.reset-btn{width:100%;padding:.55rem;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:5px;font-family:var(--mono);font-size:.7rem;cursor:pointer;transition:all .2s;margin-top:.5rem;}
-.reset-btn:hover{border-color:var(--red);color:var(--red);}
+#checklist { padding: 6rem 2rem; }
+.checklist-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 2.5rem;
+  align-items: start;
+}
+.checklist-phases { display: flex; flex-direction: column; gap: 1.5rem; }
+.cl-phase {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color .3s;
+}
+.cl-phase:hover { border-color: var(--border-bright); }
+.cl-phase-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .95rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.cl-phase-title {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--bright);
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.cl-phase-count { font-family: var(--mono); font-size: .65rem; color: var(--text); }
+.cl-items { list-style: none; padding: .5rem; }
+.cl-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .8rem;
+  padding: .65rem .75rem;
+  border-radius: 8px;
+  margin-bottom: .3rem;
+  cursor: pointer;
+  transition: all .2s;
+  border: 1px solid transparent;
+}
+.cl-item:hover { background: rgba(255,255,255,.02); border-color: var(--border); }
+.cl-item.done { background: rgba(0,255,163,.03); border-color: rgba(0,255,163,.12); }
+.cl-item.done .cl-text { color: var(--text); text-decoration: line-through; }
+.cl-cb {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--border-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all .25s var(--ease-spring);
+  font-size: .7rem;
+}
+.cl-item.done .cl-cb {
+  background: var(--green);
+  border-color: var(--green);
+  color: #000;
+  box-shadow: 0 0 8px rgba(0,255,163,.3);
+  transform: scale(1.05);
+}
+.cl-text { font-family: var(--mono); font-size: .75rem; color: var(--bright); line-height: 1.45; transition: all .2s; }
 
-/* ─── ANIMATIONS ─── */
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
-@keyframes fadein{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-.panel{animation:fadein .5s ease both;}
+.checklist-sidebar { position: sticky; top: 72px; display: flex; flex-direction: column; gap: 1rem; }
+.progress-card {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.4rem;
+}
+.prog-title {
+  font-family: var(--mono);
+  font-size: .62rem;
+  letter-spacing: .2em;
+  color: var(--text);
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+  text-align: center;
+}
+.ring-wrap { display: flex; justify-content: center; margin-bottom: 1.2rem; }
+.ring-bg { fill: none; stroke: var(--border); stroke-width: 7; }
+.ring-fill {
+  fill: none;
+  stroke: url(#ringGradient);
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .6s var(--ease-out-expo);
+  filter: drop-shadow(0 0 6px rgba(0,255,163,.3));
+}
+.ring-pct { font-family: var(--mono); font-size: 1.4rem; font-weight: 700; fill: var(--white); text-anchor: middle; dominant-baseline: central; }
+.ring-lbl { font-family: var(--mono); font-size: .55rem; fill: var(--text); text-anchor: middle; dominant-baseline: central; }
+.phase-bars { list-style: none; }
+.phase-bar-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--text);
+}
+.phase-bar-item:last-child { border-bottom: none; }
+.phase-bar-item .pbi-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-bar { flex: 2; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.mini-fill { height: 100%; background: linear-gradient(90deg, var(--k8s), var(--green)); border-radius: 2px; transition: width .4s var(--ease-out-expo); }
+.pbi-count { min-width: 30px; text-align: right; color: var(--text); }
+.reset-btn {
+  width: 100%;
+  padding: .6rem;
+  background: rgba(255,71,87,.04);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: .7rem;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: .6rem;
+}
+.reset-btn:hover { border-color: var(--red); color: var(--red); background: rgba(255,71,87,.08); }
+
+/* ─── CONFETTI ─── */
+#confettiCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10000;
+}
 
 /* ─── FOOTER ─── */
-footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;padding:2rem;letter-spacing:.2em;border-top:1px solid var(--border);}
+footer {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: rgba(20,50,90,.5);
+  padding: 2.5rem;
+  letter-spacing: .25em;
+  border-top: 1px solid var(--border);
+}
+
+/* ─── SCROLL TO TOP ─── */
+#scrollTop {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 44px;
+  height: 44px;
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all .3s var(--ease-out-expo);
+  color: var(--text);
+  font-size: 1.1rem;
+}
+#scrollTop.visible { opacity: 1; transform: translateY(0); }
+#scrollTop:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 20px rgba(0,240,255,.1);
+  transform: translateY(-3px);
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.15; } }
 
 /* ─── RESPONSIVE ─── */
-@media(max-width:900px){
-  .install-layout{grid-template-columns:1fr;}
-  .install-nav{position:static;}
-  .checklist-layout{grid-template-columns:1fr;}
-  .checklist-sidebar{position:static;}
-  nav .nav-links{display:none;}
+@media(max-width:960px) {
+  .install-layout { grid-template-columns: 1fr; }
+  .install-nav { position: static; }
+  .checklist-layout { grid-template-columns: 1fr; }
+  .checklist-sidebar { position: static; }
+}
+@media(max-width:768px) {
+  nav .nav-links { display: none; }
+  section { padding: 4rem 1.25rem; }
+  .hero-stats { gap: 1.8rem; }
+  .hero-title { font-size: clamp(2rem, 8vw, 3.5rem); }
+  #topology .topo-inner { height: 380px; }
+  #composants > .container > div { grid-template-columns: 1fr !important; }
+}
+@media(max-width:480px) {
+  nav { padding: 0 1rem; }
+  .hero-terminal { border-radius: 10px; }
+  .term-body { padding: 1rem; font-size: .72rem; }
+  .code-content { font-size: .7rem; }
 }
 </style>
 </head>
 <body>
 
+<!-- SCROLL PROGRESS -->
+<div id="scrollProgress"></div>
+
+<!-- CONFETTI CANVAS -->
+<canvas id="confettiCanvas"></canvas>
+
 <!-- NAV -->
-<nav>
+<nav id="mainNav">
   <a class="nav-logo" href="#hero"><span>K8S</span>ENV</a>
   <ul class="nav-links">
     <li><a href="#hero" class="active">Accueil</a></li>
@@ -264,13 +1230,20 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
     <li><a href="#install">Installation</a></li>
     <li><a href="#checklist">Checklist</a></li>
   </ul>
-  <div class="nav-status"><div class="status-dot"></div> 7/7 nodes · Ready</div>
+  <div class="nav-right">
+    <div class="nav-status"><div class="status-dot"></div> 7/7 nodes · Ready</div>
+    <button class="theme-toggle" id="themeToggle" title="Basculer thème OLED">OLED</button>
+  </div>
 </nav>
+
+<!-- SCROLL TO TOP -->
+<button id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
 
 <!-- HERO -->
 <section id="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-grid"></div>
+  <div class="hero-nebula"></div>
+  <div class="hero-grid-bg"></div>
+  <canvas id="particleCanvas"></canvas>
   <div class="hero-inner">
     <div class="hero-badge"><div class="hero-badge-dot"></div> Kubernetes v1.31 · Production HA</div>
     <h1 class="hero-title">
@@ -280,10 +1253,10 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
     </h1>
     <p class="hero-sub">3 Control Planes · 4 Workers · Longhorn CSI · ArgoCD GitOps<br>Architecture de production, explications pédagogiques, commandes réelles.</p>
     <div class="hero-stats">
-      <div class="hstat"><span class="hstat-val">7</span><div class="hstat-lbl">Nodes</div></div>
-      <div class="hstat"><span class="hstat-val">3</span><div class="hstat-lbl">Control Planes</div></div>
-      <div class="hstat"><span class="hstat-val">4</span><div class="hstat-lbl">Workers</div></div>
-      <div class="hstat"><span class="hstat-val">∞</span><div class="hstat-lbl">Tolérance pannes</div></div>
+      <div class="hstat"><span class="hstat-val" data-target="7">0</span><div class="hstat-lbl">Nodes</div></div>
+      <div class="hstat"><span class="hstat-val" data-target="3">0</span><div class="hstat-lbl">Control Planes</div></div>
+      <div class="hstat"><span class="hstat-val" data-target="4">0</span><div class="hstat-lbl">Workers</div></div>
+      <div class="hstat"><span class="hstat-val" data-inf="true">∞</span><div class="hstat-lbl">Tolérance pannes</div></div>
     </div>
     <div class="hero-terminal">
       <div class="term-bar">
@@ -298,105 +1271,113 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
 <!-- TOPOLOGY -->
 <section id="topology">
 <div class="container">
-  <div class="section-header" style="margin-bottom:2rem;">
+  <div class="reveal" style="margin-bottom:2rem;">
     <span class="sec-tag">Architecture</span>
     <h2 class="sec-title">Topologie du Cluster</h2>
     <p class="sec-desc">Vue en temps réel des flux de communication entre les composants. Survolez un nœud pour les détails.</p>
   </div>
 
-  <div class="panel topo-wrap">
+  <div class="panel topo-wrap reveal reveal-delay-1">
     <div class="panel-title">TOPOLOGIE — FLUX DE COMMUNICATION EN DIRECT</div>
     <div class="topo-inner" id="topo">
 
       <svg class="topo-svg" viewBox="0 0 1160 480" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <filter id="gb"><feGaussianBlur stdDeviation="2.5" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
-          <filter id="gc"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+          <filter id="gb"><feGaussianBlur stdDeviation="3" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+          <filter id="gc"><feGaussianBlur stdDeviation="2.5" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+          <linearGradient id="gradK8s" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="rgba(66,133,244,0.4)"/>
+            <stop offset="100%" stop-color="rgba(66,133,244,0.1)"/>
+          </linearGradient>
+          <linearGradient id="gradCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgba(0,240,255,0.3)"/>
+            <stop offset="100%" stop-color="rgba(0,240,255,0.05)"/>
+          </linearGradient>
         </defs>
 
         <!-- etcd zone -->
-        <ellipse cx="580" cy="165" rx="295" ry="110" fill="none" stroke="rgba(255,209,102,0.06)" stroke-width="1.5" stroke-dasharray="8 5"/>
-        <text x="580" y="52" text-anchor="middle" fill="rgba(255,209,102,0.3)" font-family="'JetBrains Mono',monospace" font-size="11" letter-spacing="3">── etcd RAFT CONSENSUS ──</text>
+        <ellipse cx="580" cy="165" rx="295" ry="110" fill="none" stroke="rgba(254,202,87,0.06)" stroke-width="1.5" stroke-dasharray="8 5"/>
+        <text x="580" y="52" text-anchor="middle" fill="rgba(254,202,87,0.25)" font-family="'IBM Plex Mono',monospace" font-size="11" letter-spacing="3">── etcd RAFT CONSENSUS ──</text>
 
         <!-- etcd sync -->
-        <line x1="300" y1="130" x2="460" y2="130" stroke="rgba(255,209,102,0.18)" stroke-width="1" stroke-dasharray="3 5"/>
-        <line x1="460" y1="130" x2="620" y2="130" stroke="rgba(255,209,102,0.18)" stroke-width="1" stroke-dasharray="3 5"/>
-        <line x1="300" y1="130" x2="620" y2="130" stroke="rgba(255,209,102,0.1)" stroke-width="1" stroke-dasharray="3 6"/>
+        <line x1="300" y1="130" x2="460" y2="130" stroke="rgba(254,202,87,0.15)" stroke-width="1" stroke-dasharray="3 5"/>
+        <line x1="460" y1="130" x2="620" y2="130" stroke="rgba(254,202,87,0.15)" stroke-width="1" stroke-dasharray="3 5"/>
+        <line x1="300" y1="130" x2="620" y2="130" stroke="rgba(254,202,87,0.08)" stroke-width="1" stroke-dasharray="3 6"/>
 
-        <!-- VIP → CPs -->
-        <line x1="80" y1="75" x2="380" y2="195" stroke="rgba(179,136,255,0.2)" stroke-width="1.5" stroke-dasharray="5 4"/>
-        <line x1="80" y1="75" x2="580" y2="195" stroke="rgba(179,136,255,0.15)" stroke-width="1" stroke-dasharray="5 4"/>
-        <line x1="80" y1="75" x2="780" y2="195" stroke="rgba(179,136,255,0.12)" stroke-width="1" stroke-dasharray="5 5"/>
+        <!-- VIP to CPs -->
+        <line x1="80" y1="75" x2="380" y2="195" stroke="rgba(165,94,234,0.2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <line x1="80" y1="75" x2="580" y2="195" stroke="rgba(165,94,234,0.12)" stroke-width="1" stroke-dasharray="5 4"/>
+        <line x1="80" y1="75" x2="780" y2="195" stroke="rgba(165,94,234,0.08)" stroke-width="1" stroke-dasharray="5 5"/>
 
-        <!-- CP ↔ CP HA -->
-        <line x1="380" y1="197" x2="580" y2="197" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
-        <line x1="580" y1="197" x2="780" y2="197" stroke="rgba(50,108,229,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
-        <line x1="380" y1="197" x2="780" y2="197" stroke="rgba(50,108,229,0.1)" stroke-width="1" stroke-dasharray="4 6"/>
+        <!-- CP HA sync -->
+        <line x1="380" y1="197" x2="580" y2="197" stroke="rgba(66,133,244,0.2)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <line x1="580" y1="197" x2="780" y2="197" stroke="rgba(66,133,244,0.2)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <line x1="380" y1="197" x2="780" y2="197" stroke="rgba(66,133,244,0.08)" stroke-width="1" stroke-dasharray="4 6"/>
 
-        <!-- CP → Workers -->
-        <line x1="380" y1="225" x2="200" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
-        <line x1="380" y1="225" x2="415" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
-        <line x1="580" y1="225" x2="615" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
-        <line x1="780" y1="225" x2="840" y2="358" stroke="rgba(0,229,255,0.12)" stroke-width="1" stroke-dasharray="4 4"/>
+        <!-- CP to Workers -->
+        <line x1="380" y1="225" x2="200" y2="358" stroke="rgba(0,240,255,0.1)" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="380" y1="225" x2="415" y2="358" stroke="rgba(0,240,255,0.1)" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="580" y1="225" x2="615" y2="358" stroke="rgba(0,240,255,0.1)" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="780" y1="225" x2="840" y2="358" stroke="rgba(0,240,255,0.1)" stroke-width="1" stroke-dasharray="4 4"/>
 
         <!-- Longhorn replication -->
-        <line x1="200" y1="378" x2="415" y2="378" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
-        <line x1="415" y1="378" x2="615" y2="378" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
-        <line x1="615" y1="378" x2="840" y2="378" stroke="rgba(0,255,179,0.12)" stroke-width="1.5" stroke-dasharray="3 5"/>
+        <line x1="200" y1="378" x2="415" y2="378" stroke="rgba(0,255,163,0.1)" stroke-width="1.5" stroke-dasharray="3 5"/>
+        <line x1="415" y1="378" x2="615" y2="378" stroke="rgba(0,255,163,0.1)" stroke-width="1.5" stroke-dasharray="3 5"/>
+        <line x1="615" y1="378" x2="840" y2="378" stroke="rgba(0,255,163,0.1)" stroke-width="1.5" stroke-dasharray="3 5"/>
 
-        <!-- ArgoCD → cp3 / Git -->
-        <line x1="1060" y1="75" x2="780" y2="197" stroke="rgba(255,140,66,0.2)" stroke-width="1.5" stroke-dasharray="5 4"/>
-        <line x1="1060" y1="75" x2="1080" y2="358" stroke="rgba(255,140,66,0.15)" stroke-width="1" stroke-dasharray="5 4"/>
+        <!-- ArgoCD to cp3 / Git -->
+        <line x1="1060" y1="75" x2="780" y2="197" stroke="rgba(255,159,67,0.18)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <line x1="1060" y1="75" x2="1080" y2="358" stroke="rgba(255,159,67,0.12)" stroke-width="1" stroke-dasharray="5 4"/>
 
         <!-- Zone labels -->
-        <text x="520" y="305" text-anchor="middle" fill="rgba(50,108,229,0.25)" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="2">── CONTROL PLANE (HA) ──</text>
-        <text x="520" y="468" text-anchor="middle" fill="rgba(0,229,255,0.2)" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="2">── DATA PLANE // WORKER NODES ──</text>
+        <text x="520" y="305" text-anchor="middle" fill="rgba(66,133,244,0.2)" font-family="'IBM Plex Mono',monospace" font-size="10" letter-spacing="2">── CONTROL PLANE (HA) ──</text>
+        <text x="520" y="468" text-anchor="middle" fill="rgba(0,240,255,0.15)" font-family="'IBM Plex Mono',monospace" font-size="10" letter-spacing="2">── DATA PLANE // WORKER NODES ──</text>
 
-        <!-- ─ PACKETS ─ -->
+        <!-- ANIMATED PACKETS -->
         <!-- VIP → cp1 -->
-        <circle r="3.5" fill="#b388ff" filter="url(#gc)"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#pvc1"/></animateMotion></circle>
+        <circle r="3.5" fill="#a55eea" filter="url(#gc)"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#pvc1"/></animateMotion></circle>
         <path id="pvc1" d="M80,75 L380,195" fill="none"/>
-        <circle r="3" fill="#b388ff" opacity=".6"><animateMotion dur="2s" repeatCount="indefinite" begin="1s"><mpath href="#pvc2"/></animateMotion></circle>
+        <circle r="3" fill="#a55eea" opacity=".6"><animateMotion dur="2s" repeatCount="indefinite" begin="1s"><mpath href="#pvc2"/></animateMotion></circle>
         <path id="pvc2" d="M80,75 L580,195" fill="none"/>
 
         <!-- cp1→cp2 sync -->
-        <circle r="3" fill="#326CE5" filter="url(#gb)"><animateMotion dur="1.8s" repeatCount="indefinite" begin=".3s"><mpath href="#pc1c2"/></animateMotion></circle>
+        <circle r="3" fill="#4285f4" filter="url(#gb)"><animateMotion dur="1.8s" repeatCount="indefinite" begin=".3s"><mpath href="#pc1c2"/></animateMotion></circle>
         <path id="pc1c2" d="M380,197 L580,197" fill="none"/>
-        <circle r="3" fill="#326CE5" filter="url(#gb)"><animateMotion dur="1.8s" repeatCount="indefinite" begin=".9s"><mpath href="#pc2c3"/></animateMotion></circle>
+        <circle r="3" fill="#4285f4" filter="url(#gb)"><animateMotion dur="1.8s" repeatCount="indefinite" begin=".9s"><mpath href="#pc2c3"/></animateMotion></circle>
         <path id="pc2c3" d="M580,197 L780,197" fill="none"/>
 
         <!-- etcd sync -->
-        <circle r="2.5" fill="#ffd166" opacity=".8"><animateMotion dur="1.5s" repeatCount="indefinite" begin=".2s"><mpath href="#pe12"/></animateMotion></circle>
+        <circle r="2.5" fill="#feca57" opacity=".8"><animateMotion dur="1.5s" repeatCount="indefinite" begin=".2s"><mpath href="#pe12"/></animateMotion></circle>
         <path id="pe12" d="M300,130 L460,130" fill="none"/>
-        <circle r="2.5" fill="#ffd166" opacity=".8"><animateMotion dur="1.5s" repeatCount="indefinite" begin=".9s"><mpath href="#pe23"/></animateMotion></circle>
+        <circle r="2.5" fill="#feca57" opacity=".8"><animateMotion dur="1.5s" repeatCount="indefinite" begin=".9s"><mpath href="#pe23"/></animateMotion></circle>
         <path id="pe23" d="M460,130 L620,130" fill="none"/>
 
         <!-- CP → workers -->
-        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="2s" repeatCount="indefinite" begin=".5s"><mpath href="#pcw1"/></animateMotion></circle>
+        <circle r="2.5" fill="#00f0ff" opacity=".7"><animateMotion dur="2s" repeatCount="indefinite" begin=".5s"><mpath href="#pcw1"/></animateMotion></circle>
         <path id="pcw1" d="M380,225 L200,358" fill="none"/>
-        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="2.2s" repeatCount="indefinite" begin="1.1s"><mpath href="#pcw2"/></animateMotion></circle>
+        <circle r="2.5" fill="#00f0ff" opacity=".7"><animateMotion dur="2.2s" repeatCount="indefinite" begin="1.1s"><mpath href="#pcw2"/></animateMotion></circle>
         <path id="pcw2" d="M380,225 L415,358" fill="none"/>
-        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="1.9s" repeatCount="indefinite" begin=".7s"><mpath href="#pcw3"/></animateMotion></circle>
+        <circle r="2.5" fill="#00f0ff" opacity=".7"><animateMotion dur="1.9s" repeatCount="indefinite" begin=".7s"><mpath href="#pcw3"/></animateMotion></circle>
         <path id="pcw3" d="M580,225 L615,358" fill="none"/>
-        <circle r="2.5" fill="#00e5ff" opacity=".7"><animateMotion dur="2.1s" repeatCount="indefinite" begin="1.4s"><mpath href="#pcw4"/></animateMotion></circle>
+        <circle r="2.5" fill="#00f0ff" opacity=".7"><animateMotion dur="2.1s" repeatCount="indefinite" begin="1.4s"><mpath href="#pcw4"/></animateMotion></circle>
         <path id="pcw4" d="M780,225 L840,358" fill="none"/>
 
         <!-- Longhorn replication -->
-        <circle r="2.5" fill="#00ffb3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin=".4s"><mpath href="#plh12"/></animateMotion></circle>
+        <circle r="2.5" fill="#00ffa3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin=".4s"><mpath href="#plh12"/></animateMotion></circle>
         <path id="plh12" d="M200,378 L415,378" fill="none"/>
-        <circle r="2.5" fill="#00ffb3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin="1.4s"><mpath href="#plh23"/></animateMotion></circle>
+        <circle r="2.5" fill="#00ffa3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin="1.4s"><mpath href="#plh23"/></animateMotion></circle>
         <path id="plh23" d="M415,378 L615,378" fill="none"/>
-        <circle r="2.5" fill="#00ffb3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin="2.2s"><mpath href="#plh34"/></animateMotion></circle>
+        <circle r="2.5" fill="#00ffa3" opacity=".6"><animateMotion dur="2.8s" repeatCount="indefinite" begin="2.2s"><mpath href="#plh34"/></animateMotion></circle>
         <path id="plh34" d="M615,378 L840,378" fill="none"/>
 
         <!-- ArgoCD GitOps -->
-        <circle r="3" fill="#ff8c42" opacity=".9" filter="url(#gb)"><animateMotion dur="2.6s" repeatCount="indefinite" begin=".6s"><mpath href="#pag"/></animateMotion></circle>
+        <circle r="3" fill="#ff9f43" opacity=".9" filter="url(#gb)"><animateMotion dur="2.6s" repeatCount="indefinite" begin=".6s"><mpath href="#pag"/></animateMotion></circle>
         <path id="pag" d="M1060,75 L780,197" fill="none"/>
       </svg>
 
       <!-- VIP/HAProxy -->
       <div class="node" style="left:6.9%;top:75px">
-        <div class="node-hex vip" style="font-size:1.1rem">⚖️</div>
+        <div class="node-hex vip" style="font-size:1.1rem">&#9878;&#65039;</div>
         <div class="node-lbl">HAProxy · VIP</div>
         <div class="node-sub">192.168.1.100:6443</div>
         <div class="tooltip">
@@ -408,63 +1389,63 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
 
       <!-- etcd -->
       <div class="node" style="left:25.9%;top:130px">
-        <div class="node-hex etcd">🗄</div>
+        <div class="node-hex etcd">&#128452;</div>
         <div class="node-lbl">etcd-1</div><div class="node-sub">leader</div>
         <div class="tooltip"><div class="tt-title">etcd — Leader</div><div class="tt-desc">Base de données clé-valeur distribuée. Protocole Raft. Stocke tout l'état du cluster. Leader actif.</div><span class="tt-tag">raft</span><span class="tt-tag">stateful</span></div>
       </div>
       <div class="node" style="left:39.7%;top:130px">
-        <div class="node-hex etcd">🗄</div>
+        <div class="node-hex etcd">&#128452;</div>
         <div class="node-lbl">etcd-2</div><div class="node-sub">follower</div>
         <div class="tooltip"><div class="tt-title">etcd — Follower</div><div class="tt-desc">Réplique l'état du leader. Peut devenir leader si celui-ci tombe. Quorum = 2/3 minimum.</div><span class="tt-tag">follower</span></div>
       </div>
       <div class="node" style="left:53.4%;top:130px">
-        <div class="node-hex etcd">🗄</div>
+        <div class="node-hex etcd">&#128452;</div>
         <div class="node-lbl">etcd-3</div><div class="node-sub">follower</div>
         <div class="tooltip"><div class="tt-title">etcd — Quorum</div><div class="tt-desc">3 nœuds = tolérance à 1 panne. Toujours un nombre impair ! 5 nœuds tolèrerait 2 pannes.</div><span class="tt-tag">fault-tolerant</span></div>
       </div>
 
       <!-- Control Planes -->
       <div class="node" style="left:32.8%;top:200px">
-        <div class="node-hex cp">⚙️</div><div class="nbadge ready"></div>
+        <div class="node-hex cp">&#9881;&#65039;</div><div class="nbadge ready"></div>
         <div class="node-lbl">control-plane-1</div><div class="node-sub">.101 · API · Scheduler</div>
         <div class="tooltip"><div class="tt-title">Control Plane #1</div><div class="tt-desc">Héberge kube-apiserver, kube-scheduler, kube-controller-manager et etcd. Cerveau du cluster.</div><span class="tt-tag">master</span><span class="tt-tag">192.168.1.101</span></div>
       </div>
       <div class="node" style="left:50%;top:200px">
-        <div class="node-hex cp">⚙️</div><div class="nbadge ready"></div>
+        <div class="node-hex cp">&#9881;&#65039;</div><div class="nbadge ready"></div>
         <div class="node-lbl">control-plane-2</div><div class="node-sub">.102 · API · CtrlMgr</div>
         <div class="tooltip"><div class="tt-title">Control Plane #2 — HA</div><div class="tt-desc">3 CPs derrière HAProxy = aucune interruption si l'un tombe. Leader election automatique.</div><span class="tt-tag">HA</span><span class="tt-tag">192.168.1.102</span></div>
       </div>
       <div class="node" style="left:67.2%;top:200px">
-        <div class="node-hex cp">⚙️</div><div class="nbadge ready"></div>
+        <div class="node-hex cp">&#9881;&#65039;</div><div class="nbadge ready"></div>
         <div class="node-lbl">control-plane-3</div><div class="node-sub">.103 · API · Scheduler</div>
         <div class="tooltip"><div class="tt-title">Control Plane #3</div><div class="tt-desc">Garantit le quorum etcd. kube-scheduler place les pods sur les workers selon CPU, RAM, affinités.</div><span class="tt-tag">scheduling</span><span class="tt-tag">192.168.1.103</span></div>
       </div>
 
       <!-- Workers -->
       <div class="node" style="left:17.2%;top:378px">
-        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-hex wk">&#128421;</div><div class="nbadge run"></div>
         <div class="node-lbl">worker-1</div><div class="node-sub">.111 · kubelet · LH</div>
         <div class="tooltip"><div class="tt-title">Worker Node #1</div><div class="tt-desc">Exécute les pods applicatifs. kubelet gère les containers via containerd. Longhorn Engine pour le stockage.</div><span class="tt-tag">data plane</span><span class="tt-tag">192.168.1.111</span></div>
       </div>
       <div class="node" style="left:35.8%;top:378px">
-        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-hex wk">&#128421;</div><div class="nbadge run"></div>
         <div class="node-lbl">worker-2</div><div class="node-sub">.112 · LH Manager</div>
         <div class="tooltip"><div class="tt-title">Worker #2 — Longhorn Mgr</div><div class="tt-desc">Héberge le Longhorn Manager. Orchestre la création et réplication des volumes persistants sur tous les workers.</div><span class="tt-tag">storage</span><span class="tt-tag">192.168.1.112</span></div>
       </div>
       <div class="node" style="left:53%;top:378px">
-        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-hex wk">&#128421;</div><div class="nbadge run"></div>
         <div class="node-lbl">worker-3</div><div class="node-sub">.113 · kubelet · LH</div>
         <div class="tooltip"><div class="tt-title">Worker Node #3</div><div class="tt-desc">Réplique Longhorn. Si worker-1 tombe, les volumes restent accessibles via les réplicas sur w2/w3/w4.</div><span class="tt-tag">resilience</span><span class="tt-tag">192.168.1.113</span></div>
       </div>
       <div class="node" style="left:72.4%;top:378px">
-        <div class="node-hex wk">🖥</div><div class="nbadge run"></div>
+        <div class="node-hex wk">&#128421;</div><div class="nbadge run"></div>
         <div class="node-lbl">worker-4</div><div class="node-sub">.114 · ArgoCD Agent</div>
         <div class="tooltip"><div class="tt-title">Worker #4 — ArgoCD</div><div class="tt-desc">Héberge l'ArgoCD Application Controller. Surveille le diff Git↔cluster et reconcile automatiquement.</div><span class="tt-tag">GitOps</span><span class="tt-tag">192.168.1.114</span></div>
       </div>
 
       <!-- Longhorn -->
       <div class="node" style="left:35.8%;top:445px">
-        <div class="node-hex lh" style="font-size:1rem">💾</div>
+        <div class="node-hex lh" style="font-size:1rem">&#128190;</div>
         <div class="node-lbl">Longhorn CSI</div><div class="node-sub">Réplication ×3</div>
         <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
           <div class="tt-title">Longhorn Distributed Storage</div>
@@ -475,13 +1456,13 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
 
       <!-- ArgoCD -->
       <div class="node" style="left:91.4%;top:75px">
-        <div class="node-hex argo" style="font-size:1rem">🐙</div><div class="nbadge run"></div>
+        <div class="node-hex argo" style="font-size:1rem">&#128025;</div><div class="nbadge run"></div>
         <div class="node-lbl">ArgoCD</div><div class="node-sub">GitOps Controller</div>
         <div class="tooltip"><div class="tt-title">ArgoCD — GitOps</div><div class="tt-desc">Synchronise le cluster avec Git. Le dépôt = source de vérité. Tout changement passe par un commit.</div><span class="tt-tag">GitOps</span><span class="tt-tag">declarative</span></div>
       </div>
       <!-- Git Repo -->
       <div class="node" style="left:93%;top:358px">
-        <div class="node-hex" style="background:rgba(179,136,255,.08);border:2px solid var(--purple);width:50px;height:50px;font-size:1rem">📦</div>
+        <div class="node-hex" style="background:rgba(165,94,234,.06);border:2px solid var(--purple);width:52px;height:52px;font-size:1rem">&#128230;</div>
         <div class="node-lbl">Git Repo</div><div class="node-sub">Source of Truth</div>
         <div class="tooltip" style="bottom:auto;top:calc(100% + 10px);">
           <div class="tt-title">Source of Truth</div>
@@ -490,53 +1471,53 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
         </div>
       </div>
 
-    </div><!-- /topo-inner -->
+    </div>
 
     <div class="legend">
-      <div class="leg"><div class="leg-dot" style="background:var(--k8s)"></div>Control Plane</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--cyan)"></div>Worker Node</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--yellow)"></div>etcd Raft</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Longhorn CSI</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div>ArgoCD GitOps</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div>HAProxy VIP</div>
-      <div class="leg" style="margin-left:auto;font-style:italic;color:#1a3a5a">💡 Hover sur un nœud pour les détails</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--k8s);box-shadow:0 0 6px var(--k8s)"></div>Control Plane</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--cyan);box-shadow:0 0 6px var(--cyan)"></div>Worker Node</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--yellow);box-shadow:0 0 6px var(--yellow)"></div>etcd Raft</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--green);box-shadow:0 0 6px var(--green)"></div>Longhorn CSI</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--orange);box-shadow:0 0 6px var(--orange)"></div>ArgoCD GitOps</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--purple);box-shadow:0 0 6px var(--purple)"></div>HAProxy VIP</div>
+      <div class="leg" style="margin-left:auto;font-style:italic;color:rgba(20,50,90,.6)">Hover sur un nœud pour les détails</div>
     </div>
-  </div><!-- /panel -->
+  </div>
 
   <!-- BOTTOM GRID -->
   <div class="bottom-grid" style="margin-top:0;">
-    <div class="panel">
+    <div class="panel reveal reveal-delay-1">
       <div class="panel-title">ÉTAT DES NŒUDS</div>
-      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-1</div><span class="nr-role cp">CP</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 18%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:18%"></div></div></div></div>
-      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-2</div><span class="nr-role cp">CP</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 14%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:14%"></div></div></div></div>
-      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-3</div><span class="nr-role cp">CP</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 16%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:16%"></div></div></div></div>
-      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-1</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 61%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:61%"></div></div></div></div>
-      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-2</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 74%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:74%"></div></div></div></div>
-      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-3</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 48%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:48%"></div></div></div></div>
-      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-4</div><span class="nr-role wk">WK</span><div style="width:64px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 55%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:55%"></div></div></div></div>
+      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-1</div><span class="nr-role cp">CP</span><div style="width:68px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 18%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:18%"></div></div></div></div>
+      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-2</div><span class="nr-role cp">CP</span><div style="width:68px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 14%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:14%"></div></div></div></div>
+      <div class="node-row"><div class="dot ready"></div><div class="nr-name">control-plane-3</div><span class="nr-role cp">CP</span><div style="width:68px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 16%</div><div class="bar-wrap"><div class="bar-fill blue" style="width:16%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-1</div><span class="nr-role wk">WK</span><div style="width:68px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 61%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:61%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-2</div><span class="nr-role wk">WK</span><div style="width:68px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 74%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:74%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-3</div><span class="nr-role wk">WK</span><div style="width:68px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 48%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:48%"></div></div></div></div>
+      <div class="node-row"><div class="dot run"></div><div class="nr-name">worker-4</div><span class="nr-role wk">WK</span><div style="width:68px"><div style="font-family:var(--mono);font-size:.52rem;color:var(--text);text-align:right">CPU 55%</div><div class="bar-wrap"><div class="bar-fill teal" style="width:55%"></div></div></div></div>
     </div>
 
-    <div class="panel">
+    <div class="panel reveal reveal-delay-2">
       <div class="panel-title">LONGHORN — VOLUMES PERSISTANTS</div>
-      <p style="font-family:var(--mono);font-size:.62rem;color:var(--text);margin-bottom:12px;line-height:1.6;">Réplication des blocs sur les workers. Panne d'un node → données toujours accessibles via les réplicas.</p>
+      <p style="font-family:var(--mono);font-size:.62rem;color:var(--text);margin-bottom:12px;line-height:1.65;">Réplication des blocs sur les workers. Panne d'un node → données toujours accessibles via les réplicas.</p>
       <div class="vol-grid">
         <div class="vol-item"><div class="vol-name">postgres-data</div><div class="vol-size">20 Gi · RWO</div><div class="vol-rep">✓ replicas ×3</div><div class="vol-bar"><div class="vol-bar-fill" style="width:42%"></div></div></div>
         <div class="vol-item"><div class="vol-name">prometheus-tsdb</div><div class="vol-size">50 Gi · RWO</div><div class="vol-rep">✓ replicas ×3</div><div class="vol-bar"><div class="vol-bar-fill" style="width:68%"></div></div></div>
         <div class="vol-item"><div class="vol-name">loki-chunks</div><div class="vol-size">100 Gi · RWO</div><div class="vol-rep">✓ replicas ×2</div><div class="vol-bar"><div class="vol-bar-fill" style="width:31%"></div></div></div>
         <div class="vol-item"><div class="vol-name">minio-data</div><div class="vol-size">200 Gi · RWX</div><div class="vol-rep">✓ replicas ×3</div><div class="vol-bar"><div class="vol-bar-fill" style="width:55%"></div></div></div>
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.57rem;color:var(--text);line-height:1.6;"><span style="color:var(--green)">RWO</span> = ReadWriteOnce · <span style="color:var(--cyan)">RWX</span> = ReadWriteMany<br>UI Longhorn → <span style="color:var(--orange)">NodePort :30080</span></div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.57rem;color:var(--text);line-height:1.65;"><span style="color:var(--green)">RWO</span> = ReadWriteOnce · <span style="color:var(--cyan)">RWX</span> = ReadWriteMany<br>UI Longhorn → <span style="color:var(--orange)">NodePort :30080</span></div>
     </div>
 
-    <div class="panel">
+    <div class="panel reveal reveal-delay-3">
       <div class="panel-title">ARGOCD — GITOPS APPLICATIONS</div>
-      <p style="font-family:var(--mono);font-size:.62rem;color:var(--text);margin-bottom:12px;line-height:1.6;"><span style="color:var(--orange)">Git = source de vérité.</span> ArgoCD reconcile en continu l'état réel vs désiré.</p>
+      <p style="font-family:var(--mono);font-size:.62rem;color:var(--text);margin-bottom:12px;line-height:1.65;"><span style="color:var(--orange)">Git = source de vérité.</span> ArgoCD reconcile en continu l'état réel vs désiré.</p>
       <div class="argo-app"><div class="argo-sync synced">SYNCED</div><div><div class="argo-name">monitoring-stack</div><div class="argo-env">Prometheus · Grafana · Alertmanager</div></div></div>
       <div class="argo-app"><div class="argo-sync synced">SYNCED</div><div><div class="argo-name">ingress-nginx</div><div class="argo-env">Ingress Controller · Cert-Manager</div></div></div>
       <div class="argo-app"><div class="argo-sync oos">OUT OF SYNC</div><div><div class="argo-name">app-backend</div><div class="argo-env">Pending deploy → v2.4.1</div></div></div>
       <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
         <div class="concept" style="padding:5px 0;border:none;">
-          <div class="concept-icon" style="font-size:.9rem">🔄</div>
+          <div class="concept-icon" style="font-size:.9rem">&#128260;</div>
           <div><div class="concept-title">Flux GitOps</div><div class="concept-desc">commit → push → ArgoCD détecte diff → applique → cluster à jour</div></div>
         </div>
       </div>
@@ -548,38 +1529,40 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
 <!-- COMPOSANTS -->
 <section id="composants">
 <div class="container">
-  <span class="sec-tag">Composants</span>
-  <h2 class="sec-title">Anatomie du Cluster</h2>
-  <p class="sec-desc" style="margin-bottom:3rem;">Chaque composant a un rôle précis. Comprendre leur interaction est essentiel pour opérer un cluster en production.</p>
+  <div class="reveal">
+    <span class="sec-tag">Composants</span>
+    <h2 class="sec-title">Anatomie du Cluster</h2>
+    <p class="sec-desc" style="margin-bottom:3rem;">Chaque composant a un rôle précis. Comprendre leur interaction est essentiel pour opérer un cluster en production.</p>
+  </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-    <div class="panel">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+    <div class="panel reveal reveal-delay-1">
       <div class="panel-title">COMPOSANTS CONTROL PLANE</div>
-      <div class="concept"><div class="concept-icon">🔌</div><div><div class="concept-title">kube-apiserver</div><div class="concept-desc">Point d'entrée unique. Valide et persiste TOUS les objets dans etcd. Expose l'API REST. Authentification, autorisation (RBAC), admission controllers.</div></div></div>
-      <div class="concept"><div class="concept-icon">📅</div><div><div class="concept-title">kube-scheduler</div><div class="concept-desc">Surveille les pods Pending et choisit le meilleur worker. Critères : ressources disponibles, affinités, anti-affinités, taints/tolerations, topologie.</div></div></div>
-      <div class="concept"><div class="concept-icon">🔁</div><div><div class="concept-title">kube-controller-manager</div><div class="concept-desc">Boucles de réconciliation : ReplicaSet, Deployment, StatefulSet, Job, Node, Endpoint… État réel → état désiré en permanence.</div></div></div>
-      <div class="concept"><div class="concept-icon">🗄</div><div><div class="concept-title">etcd</div><div class="concept-desc">Base clé-valeur distribuée (protocole Raft). Stocke l'intégralité du cluster. 3 instances = quorum. Sauvegardez-le régulièrement !</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128268;</div><div><div class="concept-title">kube-apiserver</div><div class="concept-desc">Point d'entrée unique. Valide et persiste TOUS les objets dans etcd. Expose l'API REST. Authentification, autorisation (RBAC), admission controllers.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128197;</div><div><div class="concept-title">kube-scheduler</div><div class="concept-desc">Surveille les pods Pending et choisit le meilleur worker. Critères : ressources disponibles, affinités, anti-affinités, taints/tolerations, topologie.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128257;</div><div><div class="concept-title">kube-controller-manager</div><div class="concept-desc">Boucles de réconciliation : ReplicaSet, Deployment, StatefulSet, Job, Node, Endpoint… État réel → état désiré en permanence.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128452;</div><div><div class="concept-title">etcd</div><div class="concept-desc">Base clé-valeur distribuée (protocole Raft). Stocke l'intégralité du cluster. 3 instances = quorum. Sauvegardez-le régulièrement !</div></div></div>
     </div>
-    <div class="panel">
+    <div class="panel reveal reveal-delay-2">
       <div class="panel-title">COMPOSANTS WORKER NODE</div>
-      <div class="concept"><div class="concept-icon">🤖</div><div><div class="concept-title">kubelet</div><div class="concept-desc">Agent sur chaque node. Reçoit les PodSpecs depuis l'API Server, pilote containerd/CRI-O, remonte les métriques (cAdvisor). Cœur du data plane.</div></div></div>
-      <div class="concept"><div class="concept-icon">🌐</div><div><div class="concept-title">kube-proxy</div><div class="concept-desc">Implémente les Services via iptables ou eBPF (avec Cilium). Load-balance le trafic entre les pods d'un même Service.</div></div></div>
-      <div class="concept"><div class="concept-icon">📦</div><div><div class="concept-title">containerd</div><div class="concept-desc">Container runtime (CRI). Lance les images OCI. Kubernetes ne parle plus directement à Docker depuis v1.24. containerd = standard de facto.</div></div></div>
-      <div class="concept"><div class="concept-icon">💾</div><div><div class="concept-title">Longhorn CSI Driver</div><div class="concept-desc">Plugin CSI sur chaque node. Monte les volumes Longhorn dans les pods via iSCSI. Réplique les blocs de données de façon transparente.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#129302;</div><div><div class="concept-title">kubelet</div><div class="concept-desc">Agent sur chaque node. Reçoit les PodSpecs depuis l'API Server, pilote containerd/CRI-O, remonte les métriques (cAdvisor). Cœur du data plane.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#127760;</div><div><div class="concept-title">kube-proxy</div><div class="concept-desc">Implémente les Services via iptables ou eBPF (avec Cilium). Load-balance le trafic entre les pods d'un même Service.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128230;</div><div><div class="concept-title">containerd</div><div class="concept-desc">Container runtime (CRI). Lance les images OCI. Kubernetes ne parle plus directement à Docker depuis v1.24. containerd = standard de facto.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128190;</div><div><div class="concept-title">Longhorn CSI Driver</div><div class="concept-desc">Plugin CSI sur chaque node. Monte les volumes Longhorn dans les pods via iSCSI. Réplique les blocs de données de façon transparente.</div></div></div>
     </div>
-    <div class="panel">
+    <div class="panel reveal reveal-delay-3">
       <div class="panel-title">LONGHORN — STOCKAGE DISTRIBUÉ</div>
-      <div class="concept"><div class="concept-icon">🏗</div><div><div class="concept-title">Architecture</div><div class="concept-desc">Chaque volume = 1 Engine + N Replicas distribués sur les workers. Le CSI driver expose le volume au pod via un device bloc virtuel.</div></div></div>
-      <div class="concept"><div class="concept-icon">🔄</div><div><div class="concept-title">Réplication synchrone</div><div class="concept-desc">Écriture confirmée quand tous les replicas (×3 par défaut) ont acknowledgé. Lecture depuis l'Engine local → latence minimale.</div></div></div>
-      <div class="concept"><div class="concept-icon">📸</div><div><div class="concept-title">Snapshots & Backup</div><div class="concept-desc">Snapshots COW (Copy-on-Write) incrémentaux. Backup vers S3-compatible (MinIO, AWS S3). Restore en 1 clic depuis l'UI.</div></div></div>
-      <div class="concept"><div class="concept-icon">⚡</div><div><div class="concept-title">Failover automatique</div><div class="concept-desc">Si un worker tombe, l'Engine bascule sur un replica disponible en quelques secondes. Le pod peut continuer à écrire sans interruption.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#127959;</div><div><div class="concept-title">Architecture</div><div class="concept-desc">Chaque volume = 1 Engine + N Replicas distribués sur les workers. Le CSI driver expose le volume au pod via un device bloc virtuel.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128260;</div><div><div class="concept-title">Réplication synchrone</div><div class="concept-desc">Écriture confirmée quand tous les replicas (×3 par défaut) ont acknowledgé. Lecture depuis l'Engine local → latence minimale.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128248;</div><div><div class="concept-title">Snapshots &amp; Backup</div><div class="concept-desc">Snapshots COW (Copy-on-Write) incrémentaux. Backup vers S3-compatible (MinIO, AWS S3). Restore en 1 clic depuis l'UI.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#9889;</div><div><div class="concept-title">Failover automatique</div><div class="concept-desc">Si un worker tombe, l'Engine bascule sur un replica disponible en quelques secondes. Le pod peut continuer à écrire sans interruption.</div></div></div>
     </div>
-    <div class="panel">
+    <div class="panel reveal reveal-delay-4">
       <div class="panel-title">ARGOCD — GITOPS</div>
-      <div class="concept"><div class="concept-icon">📜</div><div><div class="concept-title">Principe GitOps</div><div class="concept-desc">Git = source de vérité absolue. Toute modification d'infra passe par un commit. Traçabilité complète, rollback = git revert.</div></div></div>
-      <div class="concept"><div class="concept-icon">🔍</div><div><div class="concept-title">Reconciliation loop</div><div class="concept-desc">ArgoCD compare en continu l'état désiré (Git) avec l'état réel (cluster K8s) et applique les diffs automatiquement si sync-policy=automated.</div></div></div>
-      <div class="concept"><div class="concept-icon">🌲</div><div><div class="concept-title">App of Apps pattern</div><div class="concept-desc">Une Application ArgoCD gère d'autres Applications. Déploiement de tout le cluster en 1 commit sur le repo "apps/". Bootstrap instantané.</div></div></div>
-      <div class="concept"><div class="concept-icon">🔐</div><div><div class="concept-title">RBAC & Projects</div><div class="concept-desc">Projects ArgoCD pour isoler les équipes/environnements. RBAC fin sur qui peut sync/delete/override. Intégration SSO (Dex, OIDC).</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128220;</div><div><div class="concept-title">Principe GitOps</div><div class="concept-desc">Git = source de vérité absolue. Toute modification d'infra passe par un commit. Traçabilité complète, rollback = git revert.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128269;</div><div><div class="concept-title">Reconciliation loop</div><div class="concept-desc">ArgoCD compare en continu l'état désiré (Git) avec l'état réel (cluster K8s) et applique les diffs automatiquement si sync-policy=automated.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#127794;</div><div><div class="concept-title">App of Apps pattern</div><div class="concept-desc">Une Application ArgoCD gère d'autres Applications. Déploiement de tout le cluster en 1 commit sur le repo "apps/". Bootstrap instantané.</div></div></div>
+      <div class="concept"><div class="concept-icon">&#128272;</div><div><div class="concept-title">RBAC &amp; Projects</div><div class="concept-desc">Projects ArgoCD pour isoler les équipes/environnements. RBAC fin sur qui peut sync/delete/override. Intégration SSO (Dex, OIDC).</div></div></div>
     </div>
   </div>
 </div>
@@ -588,11 +1571,13 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
 <!-- INSTALLATION GUIDE -->
 <section id="install">
 <div class="container">
-  <span class="sec-tag">Guide d'installation</span>
-  <h2 class="sec-title">Déploiement pas à pas</h2>
-  <p class="sec-desc" style="margin-bottom:2.5rem;">Commandes réelles, testées sur Ubuntu 22.04. Adaptez les IPs à votre environnement.</p>
+  <div class="reveal">
+    <span class="sec-tag">Guide d'installation</span>
+    <h2 class="sec-title">Déploiement pas à pas</h2>
+    <p class="sec-desc" style="margin-bottom:2.5rem;">Commandes réelles, testées sur Ubuntu 22.04. Adaptez les IPs à votre environnement.</p>
+  </div>
 
-  <div class="install-layout">
+  <div class="install-layout reveal reveal-delay-1">
     <div class="install-nav">
       <div class="install-nav-title">Phases d'installation</div>
       <ul class="install-nav-list">
@@ -614,7 +1599,7 @@ footer{text-align:center;font-family:var(--mono);font-size:.55rem;color:#132240;
       <!-- PHASE 1 -->
       <div class="install-phase active" id="phase-0">
         <div class="phase-h"><h2>Prérequis système</h2><p>À exécuter sur <strong style="color:var(--yellow)">tous les nœuds</strong> (3 CP + 4 workers). Prépare l'OS pour Kubernetes.</p></div>
-        <div class="alert warn">⚠ Adaptez les hostnames et IPs à votre infrastructure avant de copier les commandes.</div>
+        <div class="alert warn">&#9888; Adaptez les hostnames et IPs à votre infrastructure avant de copier les commandes.</div>
         <div class="step">
           <div class="step-head"><div class="step-n">1</div><div class="step-title">Hostname et /etc/hosts</div></div>
           <div class="step-desc">Définissez un hostname unique sur chaque machine et remplissez /etc/hosts pour la résolution locale.</div>
@@ -691,7 +1676,7 @@ systemctl enable containerd
 <span class="cm"># Vérifier</span>
 systemctl status containerd</div></div>
         </div>
-        <div class="alert info">ℹ SystemdCgroup = true est crucial. Sans ça, kubelet et containerd utilisent des cgroup drivers différents → instabilité du cluster.</div>
+        <div class="alert info">&#8505; SystemdCgroup = true est crucial. Sans ça, kubelet et containerd utilisent des cgroup drivers différents → instabilité du cluster.</div>
         <div class="phase-nav-btns">
           <button class="pnav-btn" onclick="showPhase(0,document.querySelectorAll('.install-btn')[0])">← Précédent</button>
           <button class="pnav-btn next" onclick="showPhase(2,document.querySelectorAll('.install-btn')[2])">Phase suivante →</button>
@@ -1038,32 +2023,40 @@ EOF</div></div>
         </div>
       </div>
 
-    </div><!-- /install-phases -->
-  </div><!-- /install-layout -->
+    </div>
+  </div>
 </div>
 </section>
 
 <!-- CHECKLIST -->
 <section id="checklist">
 <div class="container">
-  <span class="sec-tag">Checklist</span>
-  <h2 class="sec-title">Suivi d'installation</h2>
-  <p class="sec-desc" style="margin-bottom:2rem;">Cochez chaque étape au fur et à mesure. Votre progression est sauvegardée localement.</p>
+  <div class="reveal">
+    <span class="sec-tag">Checklist</span>
+    <h2 class="sec-title">Suivi d'installation</h2>
+    <p class="sec-desc" style="margin-bottom:2rem;">Cochez chaque étape au fur et à mesure. Votre progression est sauvegardée localement.</p>
+  </div>
 
-  <div class="checklist-layout">
+  <div class="checklist-layout reveal reveal-delay-1">
     <div class="checklist-phases" id="checklistContainer"></div>
     <div class="checklist-sidebar">
       <div class="progress-card">
         <div class="prog-title">Progression globale</div>
         <div class="ring-wrap">
-          <svg width="110" height="110" viewBox="0 0 110 110">
-            <circle class="ring-bg" cx="55" cy="55" r="46"/>
-            <circle class="ring-fill" id="ringFill" cx="55" cy="55" r="46"
-              stroke-dasharray="289" stroke-dashoffset="289"/>
-            <g class="ring-text">
-              <text class="ring-pct" id="ringPct" x="55" y="51">0%</text>
-              <text class="ring-lbl" x="55" y="66">complété</text>
-            </g>
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#4285f4"/>
+                <stop offset="50%" stop-color="#00f0ff"/>
+                <stop offset="100%" stop-color="#00ffa3"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="60" cy="60" r="50"/>
+            <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="50"
+              stroke-dasharray="314" stroke-dashoffset="314"
+              transform="rotate(-90 60 60)"/>
+            <text class="ring-pct" id="ringPct" x="60" y="56">0%</text>
+            <text class="ring-lbl" x="60" y="72">complété</text>
           </svg>
         </div>
         <ul class="phase-bars" id="phaseBars"></ul>
@@ -1077,6 +2070,112 @@ EOF</div></div>
 <footer>KUBERNETES CLUSTER // ARCHITECTURE PÉDAGOGIQUE // 3 CP + 4 WORKERS // LONGHORN + ARGOCD // v1.31</footer>
 
 <script>
+// ═══════════════════════════════════════════════════
+// KUBE-ENV — INTERACTIVE ENGINE
+// ═══════════════════════════════════════════════════
+
+// ─── PARTICLE BACKGROUND ───
+(function() {
+  const canvas = document.getElementById('particleCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let w, h, dpr;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    w = canvas.parentElement.offsetWidth;
+    h = canvas.parentElement.offsetHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function init() {
+    resize();
+    particles = [];
+    const count = Math.min(80, Math.floor(w * h / 12000));
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        r: Math.random() * 1.5 + 0.5,
+        a: Math.random() * 0.4 + 0.1,
+        color: ['#4285f4','#00f0ff','#00ffa3','#a55eea'][Math.floor(Math.random()*4)]
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.a;
+      ctx.fill();
+    });
+
+    // Draw connections
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(0,240,255,${0.06 * (1 - dist/120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+
+  init();
+  window.addEventListener('resize', init);
+  draw();
+})();
+
+// ─── ANIMATED COUNTERS ───
+(function() {
+  const counters = document.querySelectorAll('.hstat-val[data-target]');
+  let counted = false;
+  function animateCounters() {
+    if (counted) return;
+    counted = true;
+    counters.forEach(el => {
+      const target = parseInt(el.dataset.target);
+      let current = 0;
+      const step = Math.max(1, Math.floor(target / 20));
+      const interval = setInterval(() => {
+        current += step;
+        if (current >= target) {
+          current = target;
+          clearInterval(interval);
+        }
+        el.textContent = current;
+      }, 60);
+    });
+  }
+  // Trigger immediately since hero is visible on load
+  setTimeout(animateCounters, 800);
+})();
+
 // ─── TERMINAL ANIMATION ───
 const lines = [
   {p:'root@cp-1:~$', c:'kubectl get nodes', delay:400},
@@ -1109,25 +2208,72 @@ lines.forEach(l => {
   }, l.delay);
 });
 
-// ─── NAV ACTIVE ───
-const navLinks = document.querySelectorAll('.nav-links a');
+// ─── SCROLL PROGRESS BAR ───
+const progressBar = document.getElementById('scrollProgress');
 window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  progressBar.style.width = pct + '%';
+}, { passive: true });
+
+// ─── NAV SCROLL STATE ───
+const mainNav = document.getElementById('mainNav');
+const navLinks = document.querySelectorAll('.nav-links a');
+const scrollTopBtn = document.getElementById('scrollTop');
+
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  mainNav.classList.toggle('scrolled', y > 50);
+  scrollTopBtn.classList.toggle('visible', y > 600);
+
   const sections = ['hero','topology','composants','install','checklist'];
   let current = 'hero';
   sections.forEach(id => {
     const el = document.getElementById(id);
-    if (el && window.scrollY >= el.offsetTop - 80) current = id;
+    if (el && y >= el.offsetTop - 100) current = id;
   });
   navLinks.forEach(a => {
     a.classList.toggle('active', a.getAttribute('href') === '#' + current);
   });
+}, { passive: true });
+
+// ─── SCROLL REVEAL (IntersectionObserver) ───
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// ─── THEME TOGGLE ───
+const themeToggle = document.getElementById('themeToggle');
+let isOled = localStorage.getItem('k8s-theme') === 'oled';
+if (isOled) {
+  document.documentElement.setAttribute('data-theme', 'oled');
+  themeToggle.textContent = 'DARK';
+}
+themeToggle.addEventListener('click', () => {
+  isOled = !isOled;
+  if (isOled) {
+    document.documentElement.setAttribute('data-theme', 'oled');
+    themeToggle.textContent = 'DARK';
+    localStorage.setItem('k8s-theme', 'oled');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeToggle.textContent = 'OLED';
+    localStorage.setItem('k8s-theme', 'dark');
+  }
 });
 
 // ─── INSTALL GUIDE ───
 function showPhase(idx, btn) {
   document.querySelectorAll('.install-phase').forEach((p,i) => p.classList.toggle('active', i === idx));
   document.querySelectorAll('.install-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
 // ─── COPY CODE ───
@@ -1228,7 +2374,7 @@ function renderChecklist() {
     div.innerHTML = `
       <div class="cl-phase-head">
         <div class="cl-phase-title">
-          <span style="width:6px;height:6px;border-radius:50%;background:${done===phase.items.length?'var(--green)':'var(--border2)'};display:inline-block"></span>
+          <span style="width:7px;height:7px;border-radius:50%;background:${done===phase.items.length?'var(--green)':'var(--border)'};display:inline-block;box-shadow:${done===phase.items.length?'0 0 8px var(--green)':'none'};transition:all .3s"></span>
           ${phase.phase}
         </div>
         <span class="cl-phase-count">${done}/${phase.items.length}</span>
@@ -1254,12 +2400,12 @@ function toggleItem(pi, ii, el) {
   el.classList.toggle('done', state[key]);
   el.querySelector('.cl-cb').textContent = state[key] ? '✓' : '';
   el.querySelector('.cl-text').style.textDecoration = state[key] ? 'line-through' : '';
-  // update phase count
   const phase = CHECKLIST[pi];
   const done = phase.items.filter((_,i) => state[`${pi}-${i}`]).length;
   el.closest('.cl-phase').querySelector('.cl-phase-count').textContent = `${done}/${phase.items.length}`;
   const dot = el.closest('.cl-phase').querySelector('.cl-phase-head span');
-  dot.style.background = done === phase.items.length ? 'var(--green)' : 'var(--border2)';
+  dot.style.background = done === phase.items.length ? 'var(--green)' : 'var(--border)';
+  dot.style.boxShadow = done === phase.items.length ? '0 0 8px var(--green)' : 'none';
   updateProgress();
 }
 
@@ -1268,7 +2414,7 @@ function updateProgress() {
   const total = CHECKLIST.reduce((a,p) => a + p.items.length, 0);
   const done = Object.values(state).filter(Boolean).length;
   const pct = Math.round(done / total * 100);
-  const circ = 289;
+  const circ = 314;
   document.getElementById('ringFill').style.strokeDashoffset = circ - (circ * pct / 100);
   document.getElementById('ringPct').textContent = pct + '%';
 
@@ -1283,6 +2429,9 @@ function updateProgress() {
       <span class="pbi-count">${pdone}/${phase.items.length}</span>
     </li>`;
   }).join('');
+
+  // Celebration at 100%
+  if (pct === 100) launchConfetti();
 }
 
 function resetChecklist() {
@@ -1290,6 +2439,57 @@ function resetChecklist() {
     localStorage.removeItem('k8s-checklist');
     renderChecklist();
   }
+}
+
+// ─── CONFETTI ───
+function launchConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const colors = ['#00f0ff','#00ffa3','#4285f4','#ff9f43','#a55eea','#feca57','#ff6b9d'];
+  const pieces = [];
+
+  for (let i = 0; i < 150; i++) {
+    pieces.push({
+      x: Math.random() * canvas.width,
+      y: -10 - Math.random() * 200,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 4 + 2,
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 4 + 3,
+      rot: Math.random() * 360,
+      rotV: (Math.random() - 0.5) * 12,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      a: 1
+    });
+  }
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    pieces.forEach(p => {
+      if (p.a <= 0) return;
+      alive = true;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.08;
+      p.rot += p.rotV;
+      if (frame > 60) p.a -= 0.008;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.globalAlpha = Math.max(0, p.a);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    frame++;
+    if (alive) requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
 }
 
 renderChecklist();
